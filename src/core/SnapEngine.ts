@@ -1,4 +1,8 @@
 import { CADEntity, Point2D, SnapResult, SnapSettings, SnapType } from './types';
+import { BulgeUtils } from './geometry/BulgeUtils';
+import { SplineUtils } from './geometry/SplineUtils';
+import { EllipseUtils } from './geometry/EllipseUtils';
+import { PolygonBooleanUtils } from './geometry/PolygonBooleanUtils';
 
 export class SnapEngine {
   private settings: SnapSettings = {
@@ -64,7 +68,7 @@ export class SnapEngine {
       evaluatePoint(snappedGrid, 'grid', 'Grid');
     }
 
-    // 2. Object Snaps (Endpoint, Midpoint, Center, Nearest)
+    // 2. Object Snaps
     for (const ent of entities) {
       if (ent.visible === false) continue;
 
@@ -133,7 +137,7 @@ export class SnapEngine {
         }
       } else if (ent.type === 'polyline') {
         const poly = ent as any;
-        const pts: Point2D[] = poly.points || [];
+        const pts = poly.points || [];
         for (let i = 0; i < pts.length; i++) {
           if (this.settings.endpoint) {
             evaluatePoint(pts[i], 'endpoint', 'Vertex', poly.id);
@@ -141,7 +145,26 @@ export class SnapEngine {
           if (i > 0 && this.settings.midpoint) {
             const prev = pts[i - 1];
             const curr = pts[i];
-            evaluatePoint({ x: (prev.x + curr.x) / 2, y: (prev.y + curr.y) / 2 }, 'midpoint', 'Midpoint', poly.id);
+            if (prev.bulge) {
+              const arc = BulgeUtils.toArc(prev, curr, prev.bulge);
+              if (arc) {
+                const midAngle = arc.startAngle + arc.sweepAngle / 2;
+                evaluatePoint(
+                  {
+                    x: arc.center.x + Math.cos(midAngle) * arc.radius,
+                    y: arc.center.y + Math.sin(midAngle) * arc.radius,
+                  },
+                  'midpoint',
+                  'Arc Midpoint',
+                  poly.id
+                );
+                if (this.settings.center) {
+                  evaluatePoint(arc.center, 'center', 'Arc Center', poly.id);
+                }
+              }
+            } else {
+              evaluatePoint({ x: (prev.x + curr.x) / 2, y: (prev.y + curr.y) / 2 }, 'midpoint', 'Midpoint', poly.id);
+            }
           }
         }
         if (poly.closed && pts.length > 2 && this.settings.midpoint) {
@@ -173,6 +196,61 @@ export class SnapEngine {
             'Endpoint',
             arc.id
           );
+        }
+        if (this.settings.midpoint) {
+          let s = arc.startAngle;
+          let e = arc.endAngle;
+          if (e < s) e += Math.PI * 2;
+          const midAngle = s + (e - s) / 2;
+          evaluatePoint(
+            {
+              x: arc.center.x + arc.radius * Math.cos(midAngle),
+              y: arc.center.y + arc.radius * Math.sin(midAngle),
+            },
+            'midpoint',
+            'Arc Midpoint',
+            arc.id
+          );
+        }
+      } else if (ent.type === 'spline') {
+        const spl = ent as any;
+        const pts = spl.controlPoints || [];
+        if (this.settings.endpoint) {
+          for (let i = 0; i < pts.length; i++) {
+            evaluatePoint(pts[i], 'endpoint', i === 0 || i === pts.length - 1 ? 'Endpoint' : 'Control Point', spl.id);
+          }
+        }
+      } else if (ent.type === 'ellipse') {
+        const el = ent as any;
+        if (this.settings.center) {
+          evaluatePoint(el.center, 'center', 'Center', el.id);
+        }
+        if (this.settings.endpoint) {
+          const cosR = Math.cos(el.rotation || 0);
+          const sinR = Math.sin(el.rotation || 0);
+
+          // 4 Quadrants on rotated axes
+          const q1 = { x: el.center.x + el.radiusX * cosR, y: el.center.y + el.radiusX * sinR };
+          const q2 = { x: el.center.x - el.radiusX * cosR, y: el.center.y - el.radiusX * sinR };
+          const q3 = { x: el.center.x - el.radiusY * sinR, y: el.center.y + el.radiusY * cosR };
+          const q4 = { x: el.center.x + el.radiusY * sinR, y: el.center.y - el.radiusY * cosR };
+
+          evaluatePoint(q1, 'endpoint', 'Quadrant', el.id);
+          evaluatePoint(q2, 'endpoint', 'Quadrant', el.id);
+          evaluatePoint(q3, 'endpoint', 'Quadrant', el.id);
+          evaluatePoint(q4, 'endpoint', 'Quadrant', el.id);
+        }
+      } else if (ent.type === 'hatch') {
+        const h = ent as any;
+        const poly = h.boundary || [];
+        if (this.settings.center) {
+          const centroid = PolygonBooleanUtils.calculateCentroid(poly);
+          evaluatePoint(centroid, 'center', 'Centroid', h.id);
+        }
+        if (this.settings.endpoint) {
+          for (const p of poly) {
+            evaluatePoint(p, 'endpoint', 'Boundary Vertex', h.id);
+          }
         }
       }
     }

@@ -136,6 +136,67 @@ export function loadSampleDrawing(core: CADCoreAPI, type: 'architectural' | 'mec
         height: 70,
         visible: true,
       },
+      // Executive Oval Boardroom Table (Ellipse)
+      {
+        id: 'boardroom_ellipse_table',
+        type: 'ellipse',
+        layerId: 'furniture',
+        center: { x: 150, y: -80 },
+        radiusX: 70,
+        radiusY: 45,
+        rotation: 0.1,
+        startAngle: 0,
+        endAngle: Math.PI * 2,
+        visible: true,
+      },
+      // Landscape curved pathway (Spline)
+      {
+        id: 'garden_spline_path',
+        type: 'spline',
+        layerId: 'dimensions',
+        controlPoints: [
+          { x: -300, y: -250 },
+          { x: -180, y: -280 },
+          { x: -50, y: -240 },
+          { x: 120, y: -290 },
+          { x: 300, y: -260 },
+        ],
+        degree: 3,
+        closed: false,
+        visible: true,
+      },
+      // Wall insulation cross-hatch (Hatch ANSI31)
+      {
+        id: 'wall_hatch_sample',
+        type: 'hatch',
+        layerId: 'walls',
+        boundary: [
+          { x: -290, y: -190 },
+          { x: -10, y: -190 },
+          { x: -10, y: -170 },
+          { x: -290, y: -170 },
+        ],
+        pattern: 'ANSI31',
+        scale: 8,
+        angle: Math.PI / 4,
+        fillColor: '#ffffff',
+        opacity: 0.2,
+        visible: true,
+      },
+      // Decorative pool with rounded arc corners (Polyline with Bulges)
+      {
+        id: 'pool_bulge_poly',
+        type: 'polyline',
+        layerId: 'furniture',
+        points: [
+          { x: -280, y: 70, bulge: 0.414 }, // 90 deg rounded corner
+          { x: -240, y: 110, bulge: 0 },
+          { x: -220, y: 110, bulge: 0.414 },
+          { x: -180, y: 70, bulge: 0 },
+        ],
+        closed: true,
+        visible: true,
+      },
       // Room Labels
       {
         id: 'label_conf',
@@ -158,7 +219,7 @@ export function loadSampleDrawing(core: CADCoreAPI, type: 'architectural' | 'mec
     ];
 
     entities.forEach((e) => core.addEntity(e, false));
-    core.logCommandMessage('Loaded Architectural Sample Floorplan.');
+    core.logCommandMessage('Loaded Architectural Sample Floorplan with Phase 1 primitives.');
   } else {
     // Mechanical Sample (Flange / Gear / Shaft)
     core.addLayer({

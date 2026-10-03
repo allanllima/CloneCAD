@@ -1,7 +1,13 @@
 import { CADEntity, Point2D, BoundingBox2D } from './types';
+import { RTree2D } from './spatial/RTree';
+import { SplineUtils } from './geometry/SplineUtils';
+import { EllipseUtils } from './geometry/EllipseUtils';
+import { BulgeUtils } from './geometry/BulgeUtils';
+import { PolygonBooleanUtils } from './geometry/PolygonBooleanUtils';
 
 export class SelectionManager {
   private selectedIds: Set<string> = new Set();
+  private rTree: RTree2D = new RTree2D();
   private onChangeCallback?: () => void;
 
   constructor(onChange?: () => void) {
@@ -53,13 +59,50 @@ export class SelectionManager {
     }
   }
 
-  /**
-   * Find entity under point with tolerance (in world coordinates)
-   */
+  // ---------------------------------------------------------------------------
+  // Spatial Index Management
+  // ---------------------------------------------------------------------------
+  public indexEntity(ent: CADEntity): void {
+    const bounds = this.getEntityBounds(ent);
+    if (bounds) {
+      this.rTree.insert(ent.id, bounds);
+    }
+  }
+
+  public unindexEntity(id: string): void {
+    this.rTree.remove(id);
+  }
+
+  public rebuildIndex(entities: CADEntity[]): void {
+    this.rTree.clear();
+    for (const ent of entities) {
+      if (ent.visible !== false) {
+        this.indexEntity(ent);
+      }
+    }
+  }
+
+  public getSpatialIndex(): RTree2D {
+    return this.rTree;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Picking & Box Selection with R-Tree acceleration
+  // ---------------------------------------------------------------------------
   public pickEntity(entities: CADEntity[], worldPt: Point2D, toleranceWorld: number): CADEntity | null {
+    const entityMap = new Map(entities.map((e) => [e.id, e]));
+
+    // 1. Spatial pre-filter via R-Tree in O(log N)
+    const candidateIds = this.rTree.searchPoint(worldPt, toleranceWorld);
+
+    // If R-Tree has candidates, test only those
+    const toTest = candidateIds.length > 0
+      ? candidateIds.map((id) => entityMap.get(id)).filter((e): e is CADEntity => !!e)
+      : entities;
+
     // Search in reverse order (topmost first)
-    for (let i = entities.length - 1; i >= 0; i--) {
-      const ent = entities[i];
+    for (let i = toTest.length - 1; i >= 0; i--) {
+      const ent = toTest[i];
       if (ent.visible === false) continue;
       if (this.isPointNearEntity(ent, worldPt, toleranceWorld)) {
         return ent;
@@ -68,20 +111,23 @@ export class SelectionManager {
     return null;
   }
 
-  /**
-   * Select entities within window (window vs crossing)
-   * isCrossing = true (Green, Right-to-Left): selects any entity touching or inside
-   * isCrossing = false (Blue, Left-to-Right): selects only entities entirely inside
-   */
   public selectByBox(
     entities: CADEntity[],
     box: BoundingBox2D,
     isCrossing: boolean,
     append = false
   ): string[] {
+    const entityMap = new Map(entities.map((e) => [e.id, e]));
+
+    // 1. Pre-filter candidate IDs via R-Tree search
+    const candidateIds = this.rTree.search(box);
+    const toTest = candidateIds.length > 0
+      ? candidateIds.map((id) => entityMap.get(id)).filter((e): e is CADEntity => !!e)
+      : entities;
+
     const matched: string[] = [];
 
-    for (const ent of entities) {
+    for (const ent of toTest) {
       if (ent.visible === false) continue;
       const bounds = this.getEntityBounds(ent);
       if (!bounds) continue;
@@ -113,6 +159,9 @@ export class SelectionManager {
     return matched;
   }
 
+  // ---------------------------------------------------------------------------
+  // Bounding Box Calculation for all Entity Types
+  // ---------------------------------------------------------------------------
   public getEntityBounds(ent: CADEntity): BoundingBox2D | null {
     if (ent.type === 'line') {
       const line = ent as any;
@@ -140,15 +189,29 @@ export class SelectionManager {
       };
     } else if (ent.type === 'polyline') {
       const poly = ent as any;
-      const pts: Point2D[] = poly.points || [];
+      const pts = poly.points || [];
       if (pts.length === 0) return null;
+
       let minX = pts[0].x, maxX = pts[0].x;
       let minY = pts[0].y, maxY = pts[0].y;
-      for (const p of pts) {
-        minX = Math.min(minX, p.x);
-        maxX = Math.max(maxX, p.x);
-        minY = Math.min(minY, p.y);
-        maxY = Math.max(maxY, p.y);
+
+      for (let i = 0; i < pts.length; i++) {
+        const curr = pts[i];
+        minX = Math.min(minX, curr.x);
+        maxX = Math.max(maxX, curr.x);
+        minY = Math.min(minY, curr.y);
+        maxY = Math.max(maxY, curr.y);
+
+        // Account for bulged arc segments
+        if (curr.bulge && i < pts.length - 1) {
+          const arc = BulgeUtils.toArc(curr, pts[i + 1], curr.bulge);
+          if (arc) {
+            minX = Math.min(minX, arc.center.x - arc.radius);
+            maxX = Math.max(maxX, arc.center.x + arc.radius);
+            minY = Math.min(minY, arc.center.y - arc.radius);
+            maxY = Math.max(maxY, arc.center.y + arc.radius);
+          }
+        }
       }
       return { minX, maxX, minY, maxY };
     } else if (ent.type === 'arc') {
@@ -169,11 +232,23 @@ export class SelectionManager {
         minY: t.position.y - approxHeight,
         maxY: t.position.y,
       };
+    } else if (ent.type === 'spline') {
+      const spl = ent as any;
+      return SplineUtils.getBounds(spl.controlPoints || [], spl.closed);
+    } else if (ent.type === 'ellipse') {
+      const el = ent as any;
+      return EllipseUtils.getBounds(el.center, el.radiusX, el.radiusY, el.rotation || 0);
+    } else if (ent.type === 'hatch') {
+      const h = ent as any;
+      return PolygonBooleanUtils.getBounds(h.boundary || []);
     }
     return null;
   }
 
-  private isPointNearEntity(ent: CADEntity, pt: Point2D, tol: number): boolean {
+  // ---------------------------------------------------------------------------
+  // Hit Testing for all Entity Types
+  // ---------------------------------------------------------------------------
+  public isPointNearEntity(ent: CADEntity, pt: Point2D, tol: number): boolean {
     if (ent.type === 'line') {
       const line = ent as any;
       return this.distancePointToSegment(pt, line.start, line.end) <= tol;
@@ -195,12 +270,30 @@ export class SelectionManager {
       );
     } else if (ent.type === 'polyline') {
       const poly = ent as any;
-      const pts: Point2D[] = poly.points || [];
+      const pts = poly.points || [];
       for (let i = 0; i < pts.length - 1; i++) {
-        if (this.distancePointToSegment(pt, pts[i], pts[i + 1]) <= tol) return true;
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        if (p1.bulge) {
+          const sampled = BulgeUtils.samplePoints(p1, p2, p1.bulge, 12);
+          for (let k = 0; k < sampled.length - 1; k++) {
+            if (this.distancePointToSegment(pt, sampled[k], sampled[k + 1]) <= tol) return true;
+          }
+        } else {
+          if (this.distancePointToSegment(pt, p1, p2) <= tol) return true;
+        }
       }
       if (poly.closed && pts.length > 2) {
-        if (this.distancePointToSegment(pt, pts[pts.length - 1], pts[0]) <= tol) return true;
+        const last = pts[pts.length - 1];
+        const first = pts[0];
+        if (last.bulge) {
+          const sampled = BulgeUtils.samplePoints(last, first, last.bulge, 12);
+          for (let k = 0; k < sampled.length - 1; k++) {
+            if (this.distancePointToSegment(pt, sampled[k], sampled[k + 1]) <= tol) return true;
+          }
+        } else {
+          if (this.distancePointToSegment(pt, last, first) <= tol) return true;
+        }
       }
       return false;
     } else if (ent.type === 'arc') {
@@ -218,6 +311,23 @@ export class SelectionManager {
       } else {
         return angle >= s || angle <= e;
       }
+    } else if (ent.type === 'spline') {
+      const spl = ent as any;
+      return SplineUtils.distanceToSpline(pt, spl.controlPoints || [], spl.closed) <= tol;
+    } else if (ent.type === 'ellipse') {
+      const el = ent as any;
+      return EllipseUtils.distanceToEllipse(pt, el.center, el.radiusX, el.radiusY, el.rotation || 0) <= tol;
+    } else if (ent.type === 'hatch') {
+      const h = ent as any;
+      const poly = h.boundary || [];
+      // Clicking inside the polygon or clicking its boundary selects the hatch!
+      if (PolygonBooleanUtils.isPointInPolygon(pt, poly)) return true;
+      for (let i = 0; i < poly.length; i++) {
+        const p1 = poly[i];
+        const p2 = poly[(i + 1) % poly.length];
+        if (this.distancePointToSegment(pt, p1, p2) <= tol) return true;
+      }
+      return false;
     } else if (ent.type === 'text') {
       const bounds = this.getEntityBounds(ent);
       if (!bounds) return false;

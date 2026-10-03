@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { CADEntity, CADLayer, Point2D, ViewportState } from './types';
 import { Viewport } from './Viewport';
+import { BulgeUtils } from './geometry/BulgeUtils';
+import { SplineUtils } from './geometry/SplineUtils';
+import { EllipseUtils } from './geometry/EllipseUtils';
+import { HatchUtils } from './geometry/HatchUtils';
+import { PolygonBooleanUtils } from './geometry/PolygonBooleanUtils';
 
 export class CADRenderer {
   private container: HTMLElement;
@@ -460,18 +465,161 @@ export class CADRenderer {
 
       case 'polyline': {
         const poly = ent as any;
-        const pts: Point2D[] = poly.points || [];
+        const pts: any[] = poly.points || [];
         if (pts.length < 2) return null;
-        const positions: number[] = [];
-        for (const p of pts) {
-          positions.push(p.x, p.y, 5);
+        const sampledPoints: Point2D[] = [];
+
+        for (let i = 0; i < pts.length - 1; i++) {
+          const curr = pts[i];
+          const next = pts[i + 1];
+          if (curr.bulge) {
+            const arcPts = BulgeUtils.samplePoints(curr, next, curr.bulge, 16);
+            // Append sampled points without duplicating endpoints
+            for (let k = 0; k < arcPts.length - 1; k++) {
+              sampledPoints.push(arcPts[k]);
+            }
+          } else {
+            sampledPoints.push(curr);
+          }
         }
-        if (poly.closed) {
-          positions.push(pts[0].x, pts[0].y, 5);
+        sampledPoints.push(pts[pts.length - 1]);
+
+        if (poly.closed && pts.length > 2) {
+          const last = pts[pts.length - 1];
+          const first = pts[0];
+          if (last.bulge) {
+            const arcPts = BulgeUtils.samplePoints(last, first, last.bulge, 16);
+            for (let k = 0; k < arcPts.length; k++) {
+              sampledPoints.push(arcPts[k]);
+            }
+          } else {
+            sampledPoints.push(first);
+          }
+        }
+
+        const positions: number[] = [];
+        for (const p of sampledPoints) {
+          positions.push(p.x, p.y, 5);
         }
         const geom = new THREE.BufferGeometry();
         geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         return new THREE.Line(geom, material);
+      }
+
+      case 'spline': {
+        const spl = ent as any;
+        const pts = spl.controlPoints || [];
+        if (pts.length < 2) return null;
+
+        const group = new THREE.Group();
+        const sampled = SplineUtils.sampleSpline(pts, spl.closed, 24);
+        const positions: number[] = [];
+        for (const p of sampled) {
+          positions.push(p.x, p.y, 5);
+        }
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const curveLine = new THREE.Line(geom, material);
+        group.add(curveLine);
+
+        // If selected: show control polygon
+        if (ent.selected && pts.length > 2) {
+          const ctrlPositions: number[] = [];
+          for (const p of pts) {
+            ctrlPositions.push(p.x, p.y, 6);
+          }
+          if (spl.closed) {
+            ctrlPositions.push(pts[0].x, pts[0].y, 6);
+          }
+          const ctrlGeom = new THREE.BufferGeometry();
+          ctrlGeom.setAttribute('position', new THREE.Float32BufferAttribute(ctrlPositions, 3));
+          const ctrlMat = new THREE.LineBasicMaterial({
+            color: 0xffaa00,
+            transparent: true,
+            opacity: 0.6,
+          });
+          group.add(new THREE.Line(ctrlGeom, ctrlMat));
+        }
+
+        return group;
+      }
+
+      case 'ellipse': {
+        const el = ent as any;
+        const sampled = EllipseUtils.sampleEllipse(
+          el.center,
+          el.radiusX,
+          el.radiusY,
+          el.rotation || 0,
+          el.startAngle || 0,
+          el.endAngle || Math.PI * 2,
+          64
+        );
+        const positions: number[] = [];
+        for (const p of sampled) {
+          positions.push(p.x, p.y, 5);
+        }
+        const geom = new THREE.BufferGeometry();
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        return new THREE.Line(geom, material);
+      }
+
+      case 'hatch': {
+        const h = ent as any;
+        const poly: Point2D[] = h.boundary || [];
+        if (poly.length < 3) return null;
+
+        const group = new THREE.Group();
+
+        // 1. Solid fill plane (using triangulate)
+        const indices = PolygonBooleanUtils.triangulate(poly);
+        if (indices.length >= 3) {
+          const positions: number[] = [];
+          for (const p of poly) {
+            positions.push(p.x, p.y, 3);
+          }
+          const shapeGeom = new THREE.BufferGeometry();
+          shapeGeom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+          shapeGeom.setIndex(indices);
+
+          const fillColor = this.parseColorToHex(h.fillColor || h.color || '#445566');
+          const opacity = h.pattern === 'SOLID' ? (h.opacity ?? 0.5) : 0.15;
+          const fillMat = new THREE.MeshBasicMaterial({
+            color: fillColor,
+            transparent: true,
+            opacity,
+            depthWrite: false,
+          });
+          const mesh = new THREE.Mesh(shapeGeom, fillMat);
+          group.add(mesh);
+        }
+
+        // 2. Pattern Lines (ANSI31, ANSI32, GRID, DOTS)
+        if (h.pattern !== 'SOLID') {
+          const lines = HatchUtils.generatePatternLines(poly, h.pattern, h.scale || 10, h.angle || Math.PI / 4);
+          if (lines.length > 0) {
+            const linePositions: number[] = [];
+            for (const l of lines) {
+              linePositions.push(l.start.x, l.start.y, 4, l.end.x, l.end.y, 4);
+            }
+            const lineGeom = new THREE.BufferGeometry();
+            lineGeom.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+            const patternLines = new THREE.LineSegments(lineGeom, material);
+            group.add(patternLines);
+          }
+        }
+
+        // 3. Boundary outline
+        const outlinePositions: number[] = [];
+        for (const p of poly) {
+          outlinePositions.push(p.x, p.y, 5);
+        }
+        outlinePositions.push(poly[0].x, poly[0].y, 5);
+        const outlineGeom = new THREE.BufferGeometry();
+        outlineGeom.setAttribute('position', new THREE.Float32BufferAttribute(outlinePositions, 3));
+        group.add(new THREE.Line(outlineGeom, material));
+
+        return group;
       }
 
       case 'arc': {
@@ -535,6 +683,24 @@ export class CADRenderer {
     } else if (ent.type === 'polyline') {
       const poly = ent as any;
       pts.push(...(poly.points || []));
+    } else if (ent.type === 'spline') {
+      const spl = ent as any;
+      pts.push(...(spl.controlPoints || []));
+    } else if (ent.type === 'ellipse') {
+      const el = ent as any;
+      const cosR = Math.cos(el.rotation || 0);
+      const sinR = Math.sin(el.rotation || 0);
+      pts.push(
+        el.center,
+        { x: el.center.x + el.radiusX * cosR, y: el.center.y + el.radiusX * sinR },
+        { x: el.center.x - el.radiusX * cosR, y: el.center.y - el.radiusX * sinR },
+        { x: el.center.x - el.radiusY * sinR, y: el.center.y + el.radiusY * cosR },
+        { x: el.center.x + el.radiusY * sinR, y: el.center.y - el.radiusY * cosR }
+      );
+    } else if (ent.type === 'hatch') {
+      const h = ent as any;
+      pts.push(...(h.boundary || []));
+      pts.push(PolygonBooleanUtils.calculateCentroid(h.boundary || []));
     }
 
     if (pts.length === 0) return null;

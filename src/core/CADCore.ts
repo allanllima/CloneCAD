@@ -231,6 +231,8 @@ export class CADCore implements CADCoreAPI {
       entity.layerId = this.getActiveLayer().id;
     }
     this.entities.set(entity.id, entity);
+    this.selection.indexEntity(entity);
+
     if (select) {
       this.selectEntities([entity.id], false);
     }
@@ -242,6 +244,7 @@ export class CADCore implements CADCoreAPI {
     const entity = this.entities.get(id);
     if (entity) {
       this.entities.delete(id);
+      this.selection.unindexEntity(id);
       this.selection.deselect([id]);
       this.eventBus.emit('entity:removed', id);
       this.requestRender();
@@ -251,6 +254,7 @@ export class CADCore implements CADCoreAPI {
   public updateEntity(entity: CADEntity): void {
     if (this.entities.has(entity.id)) {
       this.entities.set(entity.id, { ...entity });
+      this.selection.indexEntity(entity);
       this.eventBus.emit('entity:updated', entity);
       this.requestRender();
     }
@@ -381,8 +385,16 @@ export class CADCore implements CADCoreAPI {
   // Snapping & Ortho
   // ---------------------------------------------------------------------------
   public snapPoint(rawWorldPoint: Point2D, rawScreenPoint: Point2D): SnapResult | null {
+    const tolScreen = this.snapEngine.getSettings().snapToleranceScreen;
+    const tolWorld = tolScreen / this.viewport.getState().zoom;
+
+    const candidateIds = this.selection.getSpatialIndex().searchPoint(rawWorldPoint, tolWorld * 1.5);
+    const candidateEntities = candidateIds.length > 0
+      ? candidateIds.map((id) => this.entities.get(id)).filter((e): e is CADEntity => !!e)
+      : this.getEntities();
+
     return this.snapEngine.findSnap(
-      this.getEntities(),
+      candidateEntities,
       rawWorldPoint,
       (w) => this.worldToScreen(w.x, w.y),
       rawScreenPoint

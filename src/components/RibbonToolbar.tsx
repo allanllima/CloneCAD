@@ -19,6 +19,9 @@ import {
   Undo2,
   Redo2,
   Layers,
+  Activity,
+  CircleDashed,
+  Hash,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
@@ -166,6 +169,45 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({ core, onOpenLayers
           >
             <Square size={18} />
             <span className="text-[10px] mt-0.5 font-medium">Rect</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('spline')}
+            title="Spline (SPL)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'spline'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Activity size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Spline</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('ellipse')}
+            title="Ellipse (EL)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'ellipse'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <CircleDashed size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Ellipse</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('hatch')}
+            title="Hatch Pattern (H)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'hatch'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Hash size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Hatch</span>
           </button>
 
           <button

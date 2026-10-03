@@ -15,19 +15,19 @@ flowchart LR
 
 ---
 
-## 📌 Fase 1: Robustez do Motor Geométrico & Indexação Espacial
+## 📌 Fase 1: Robustez do Motor Geométrico & Indexação Espacial (Concluída ✅)
 > **Objetivo:** Garantir precisão numérica milimétrica e capacidade de consultar dezenas de milhares de entidades a 60 FPS.
 
-- [ ] **Estruturas de Indexação Espacial (R-Tree / BVH):**
-  - Implementar um *R-Tree 2D* em memória para particionamento espacial.
-  - Otimizar busca por janela (Bounding Box), picking e snapping de $O(N)$ para $O(\log N)$.
-- [ ] **Primitivas Geométricas Avançadas:**
-  - **Splines (NURBS / B-Splines):** Curvas suaves com nós e pontos de controle editáveis via grips.
-  - **Elipses e Arcos Elípticos:** Eixo maior, eixo menor e ângulo de rotação.
-  - **Polilinhas com Arcos (Bulge Factor):** Suporte nativo a segmentos curvos dentro da mesma polilinha (padrão DXF).
-  - **Hachuras (Hatch / Gradient):** Preenchimento paramétrico de áreas fechadas (ANSI31, sólido, padrões industriais) usando triangulação e Shaders.
-- [ ] **Biblioteca de Geometria Computacional:**
-  - Integração de biblioteca de clipping robusto (como *Clipper2* compilado via WebAssembly) para união, subtração, interseção e offsets de polígonos com coordenadas inteiras de 64 bits (eliminando instabilidades de ponto flutuante).
+- [x] **Estruturas de Indexação Espacial (R-Tree / BVH):**
+  - Implementação de *R-Tree 2D* de alta performance em memória (`src/core/spatial/RTree.ts`).
+  - Otimização de busca por janela (Bounding Box), picking e snapping de $O(N)$ para $O(\log N)$ integrado ao Core e SelectionManager.
+- [x] **Primitivas Geométricas Avançadas:**
+  - **Splines (NURBS / B-Splines / Catmull-Rom):** Curvas suaves contínuas com nós e polígono de controle editáveis (`SplinePlugin.ts`, `SplineUtils.ts`).
+  - **Elipses e Arcos Elípticos:** Eixo maior, eixo menor, rotação analítica e snapping nos quadrantes (`EllipsePlugin.ts`, `EllipseUtils.ts`).
+  - **Polilinhas com Arcos (Bulge Factor):** Suporte nativo a segmentos curvos dentro de polilinhas via fator bulge $\tan(\theta/4)$ padrão DXF (`BulgeUtils.ts`).
+  - **Hachuras (Hatch / Patterns):** Preenchimento paramétrico com padrões ANSI31, ANSI32, GRID, DOTS e SOLID via scanline e triangulação (`HatchPlugin.ts`, `HatchUtils.ts`).
+- [x] **Biblioteca de Geometria Computacional:**
+  - Algoritmos para point-in-polygon (ray casting), área por Shoelace, centróide analítico e triangulação Ear Clipping (`PolygonBooleanUtils.ts`).
 
 ---
 

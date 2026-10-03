@@ -336,6 +336,33 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               </button>
               <button
                 onClick={() => {
+                  core.setActiveTool('spline');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Spline</span> <span className="text-[#5c6370]">SPL</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('ellipse');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Ellipse</span> <span className="text-[#5c6370]">EL</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('hatch');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Hatch</span> <span className="text-[#5c6370]">H</span>
+              </button>
+              <button
+                onClick={() => {
                   core.setActiveTool('text');
                   setOpenMenu(null);
                 }}

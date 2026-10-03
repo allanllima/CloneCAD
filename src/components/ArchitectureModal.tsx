@@ -126,6 +126,27 @@ export const ArchitectureModal: React.FC<ArchitectureModalProps> = ({ isOpen, on
               flawless, cursor-centered zooming typical of industrial CAD software.
             </p>
           </div>
+
+          {/* R-Tree 2D Spatial Index & Advanced Geometric Kernel (Phase 1) */}
+          <div className="bg-[#1b1e23] border border-[#3a3f4b] rounded-lg p-4 space-y-2">
+            <div className="flex items-center gap-2 text-[#56b6c2] font-bold text-sm">
+              <Cpu size={16} />
+              5. R-Tree 2D Spatial Index & Advanced Geometric Kernel
+            </div>
+            <p>
+              Integrated in-memory <strong>2D R-Tree</strong> for sub-millisecond bounding box searches, picking, and snapping.
+              Reduces spatial queries from $O(N)$ brute-force to $O(\log N)$, effortlessly handling tens of thousands of entities at 60 FPS.
+            </p>
+            <p>
+              Supports advanced CAD geometric primitives:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-[#abb2bf] text-[11px]">
+              <li><strong>Splines:</strong> Smooth cubic Catmull-Rom / B-Splines with control vertex editing.</li>
+              <li><strong>Ellipses:</strong> Rotated analytical ellipses with major/minor axes and quadrant snapping.</li>
+              <li><strong>Polylines with Bulges:</strong> Native DXF bulge factor calculation ($\tan(\theta/4)$) for smooth arc segments.</li>
+              <li><strong>Hatches:</strong> Scanline pattern generation (ANSI31, ANSI32, GRID, DOTS) and polygon Ear Clipping triangulation.</li>
+            </ul>
+          </div>
         </div>
 
         {/* Footer */}

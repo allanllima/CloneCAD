@@ -98,6 +98,21 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core }) => {
         core.setActiveTool('arc');
         break;
 
+      case 'SPL':
+      case 'SPLINE':
+        core.setActiveTool('spline');
+        break;
+
+      case 'EL':
+      case 'ELLIPSE':
+        core.setActiveTool('ellipse');
+        break;
+
+      case 'H':
+      case 'HATCH':
+        core.setActiveTool('hatch');
+        break;
+
       case 'T':
       case 'TEXT':
       case 'MTEXT':

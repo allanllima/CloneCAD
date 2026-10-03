@@ -47,7 +47,17 @@ export interface CADLayer {
   lineType?: 'continuous' | 'dashed' | 'dotted';
 }
 
-export type EntityType = 'line' | 'circle' | 'rectangle' | 'polyline' | 'arc' | 'text' | string;
+export type EntityType =
+  | 'line'
+  | 'circle'
+  | 'rectangle'
+  | 'polyline'
+  | 'arc'
+  | 'text'
+  | 'spline'
+  | 'ellipse'
+  | 'hatch'
+  | string;
 
 export interface BaseEntity {
   id: string;
@@ -78,9 +88,13 @@ export interface RectangleEntity extends BaseEntity {
   height: number;
 }
 
+export interface PolylineVertex extends Point2D {
+  bulge?: number; // DXF bulge = tan(sweep / 4). 0 = straight line.
+}
+
 export interface PolylineEntity extends BaseEntity {
   type: 'polyline';
-  points: Point2D[];
+  points: PolylineVertex[];
   closed: boolean;
 }
 
@@ -100,7 +114,46 @@ export interface TextEntity extends BaseEntity {
   rotation?: number; // radians
 }
 
-export type CADEntity = LineEntity | CircleEntity | RectangleEntity | PolylineEntity | ArcEntity | TextEntity | (BaseEntity & Record<string, any>);
+export interface SplineEntity extends BaseEntity {
+  type: 'spline';
+  controlPoints: Point2D[];
+  degree?: number;
+  closed?: boolean;
+}
+
+export interface EllipseEntity extends BaseEntity {
+  type: 'ellipse';
+  center: Point2D;
+  radiusX: number; // semi-major axis
+  radiusY: number; // semi-minor axis
+  rotation: number; // radians
+  startAngle: number; // radians
+  endAngle: number;   // radians
+}
+
+export type HatchPattern = 'SOLID' | 'ANSI31' | 'ANSI32' | 'GRID' | 'DOTS';
+
+export interface HatchEntity extends BaseEntity {
+  type: 'hatch';
+  boundary: Point2D[];
+  pattern: HatchPattern;
+  scale: number;
+  angle: number; // in radians
+  fillColor?: string;
+  opacity?: number;
+}
+
+export type CADEntity =
+  | LineEntity
+  | CircleEntity
+  | RectangleEntity
+  | PolylineEntity
+  | ArcEntity
+  | TextEntity
+  | SplineEntity
+  | EllipseEntity
+  | HatchEntity
+  | (BaseEntity & Record<string, any>);
 
 // -------------------------------------------------------------
 // Viewport & Coordinate System

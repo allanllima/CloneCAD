@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CADCore } from '../core/CADCore';
 import { CADEntity, CADLayer } from '../core/types';
 import { ModifyEntityCommand } from '../commands/ModifyEntityCommand';
+import { PolygonBooleanUtils } from '../core/geometry/PolygonBooleanUtils';
 import { X, Sliders } from 'lucide-react';
 
 interface PropertiesPanelProps {
@@ -265,6 +266,109 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ core, isOpen, 
                   <div className="flex justify-between items-center py-0.5">
                     <span className="text-[#abb2bf]">End Angle</span>
                     <span className="font-mono text-[#e5e9f0]">{((entity as any).endAngle * 180 / Math.PI).toFixed(1)}°</span>
+                  </div>
+                </>
+              )}
+
+              {entity.type === 'spline' && (
+                <>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Control Points</span>
+                    <span className="font-mono text-[#e5e9f0]">{(entity as any).controlPoints?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Degree</span>
+                    <span className="font-mono text-[#e5e9f0]">{(entity as any).degree || 3}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Closed</span>
+                    <button
+                      onClick={() => handleUpdate({ closed: !(entity as any).closed } as any)}
+                      className="px-2 py-0.5 bg-[#181a1f] border border-[#3a3f4b] rounded text-[#e5c07b] font-mono text-[11px]"
+                    >
+                      {(entity as any).closed ? 'Yes' : 'No'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {entity.type === 'ellipse' && (
+                <>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Center X</span>
+                    <span className="font-mono text-[#e5e9f0]">{(entity as any).center.x.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Center Y</span>
+                    <span className="font-mono text-[#e5e9f0]">{(entity as any).center.y.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Major Radius</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={Math.round((entity as any).radiusX)}
+                      onChange={(e) => handleUpdate({ radiusX: Math.max(1, parseFloat(e.target.value) || 1) } as any)}
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Minor Radius</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={Math.round((entity as any).radiusY)}
+                      onChange={(e) => handleUpdate({ radiusY: Math.max(1, parseFloat(e.target.value) || 1) } as any)}
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-t border-[#3a3f4b] pt-1">
+                    <span className="text-[#abb2bf]">Rotation</span>
+                    <span className="font-mono text-[#e5e9f0]">
+                      {(((entity as any).rotation * 180) / Math.PI).toFixed(1)}°
+                    </span>
+                  </div>
+                </>
+              )}
+
+              {entity.type === 'hatch' && (
+                <>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Pattern</span>
+                    <select
+                      value={(entity as any).pattern}
+                      onChange={(e) => handleUpdate({ pattern: e.target.value } as any)}
+                      className="bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-[11px] outline-none"
+                    >
+                      <option value="SOLID">SOLID</option>
+                      <option value="ANSI31">ANSI31</option>
+                      <option value="ANSI32">ANSI32</option>
+                      <option value="GRID">GRID</option>
+                      <option value="DOTS">DOTS</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Scale</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="2"
+                      value={(entity as any).scale || 10}
+                      onChange={(e) => handleUpdate({ scale: Math.max(2, parseFloat(e.target.value) || 10) } as any)}
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Vertices</span>
+                    <span className="font-mono text-[#e5e9f0]">{(entity as any).boundary?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-t border-[#3a3f4b] pt-1">
+                    <span className="text-[#abb2bf]">Area</span>
+                    <span className="font-mono text-[#e5c07b] font-semibold">
+                      {PolygonBooleanUtils.calculateArea((entity as any).boundary || []).toFixed(2)}
+                    </span>
                   </div>
                 </>
               )}

@@ -8,6 +8,9 @@ import { RectanglePlugin } from './draw/RectanglePlugin';
 import { PolylinePlugin } from './draw/PolylinePlugin';
 import { ArcPlugin } from './draw/ArcPlugin';
 import { TextPlugin } from './annotation/TextPlugin';
+import { SplinePlugin } from './draw/SplinePlugin';
+import { EllipsePlugin } from './draw/EllipsePlugin';
+import { HatchPlugin } from './draw/HatchPlugin';
 import { ErasePlugin } from './modify/ErasePlugin';
 import { MovePlugin } from './modify/MovePlugin';
 import { CopyPlugin } from './modify/CopyPlugin';
@@ -21,6 +24,9 @@ export * from './draw/CirclePlugin';
 export * from './draw/RectanglePlugin';
 export * from './draw/PolylinePlugin';
 export * from './draw/ArcPlugin';
+export * from './draw/SplinePlugin';
+export * from './draw/EllipsePlugin';
+export * from './draw/HatchPlugin';
 export * from './annotation/TextPlugin';
 export * from './modify/ErasePlugin';
 export * from './modify/MovePlugin';
@@ -43,6 +49,9 @@ export function registerDefaultPlugins(core: CADCoreAPI): void {
   core.registerPlugin(new ArcPlugin());
   core.registerPlugin(new RectanglePlugin());
   core.registerPlugin(new TextPlugin());
+  core.registerPlugin(new SplinePlugin());
+  core.registerPlugin(new EllipsePlugin());
+  core.registerPlugin(new HatchPlugin());
 
   // Modify
   core.registerPlugin(new ErasePlugin());
