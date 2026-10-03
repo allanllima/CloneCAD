@@ -375,6 +375,41 @@ export interface CADDiffResult {
 }
 
 // -------------------------------------------------------------
+// WebGPU, Big Data & Graphics Acceleration (Phase 8)
+// -------------------------------------------------------------
+export type LODLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'SUBPIXEL';
+
+export interface PerformanceMetrics {
+  fps: number;
+  frameTimeMs: number;
+  totalEntities: number;
+  renderedEntities: number;
+  culledEntities: number;
+  cullingRatio: number;
+  drawCalls: number;
+  activeLOD: LODLevel;
+  rendererBackend: 'WebGPU' | 'WebGL2' | 'WebGL';
+  workerActive: boolean;
+  instancedBatches: number;
+  memoryEstimateMB: number;
+}
+
+export interface GraphicsAccelerationOptions {
+  webgpuEnabled: boolean;
+  frustumCullingEnabled: boolean;
+  lodEnabled: boolean;
+  instancedRenderingEnabled: boolean;
+  workerAccelerationEnabled: boolean;
+  cullingMargin: number;
+}
+
+export interface BigDataStressOptions {
+  count: number;
+  areaSize?: number;
+  entityType?: 'line' | 'circle' | 'rectangle' | 'mixed';
+}
+
+// -------------------------------------------------------------
 // Viewport & Coordinate System
 // -------------------------------------------------------------
 export interface ViewportState {
@@ -600,6 +635,17 @@ export interface CADCoreAPI {
   diffCommits(commitIdA: string, commitIdB: string): CADDiffResult;
   diffCurrentWithCommit(commitId: string): CADDiffResult;
   openVersionControlModal(): void;
+
+  // WebGPU & Big Data Graphics Acceleration (Phase 8)
+  getPerformanceMetrics(): PerformanceMetrics;
+  getGraphicsOptions(): GraphicsAccelerationOptions;
+  setGraphicsOptions(options: Partial<GraphicsAccelerationOptions>): void;
+  generateStressEntities(count: number, areaSize?: number, entityType?: 'line' | 'circle' | 'rectangle' | 'mixed'): number;
+  clearStressEntities(): void;
+  openPerformanceModal(): void;
+  togglePerformanceHUD(): void;
+  isPerformanceHUDVisible(): boolean;
+  setPerformanceHUDVisible(visible: boolean): void;
 }
 
 export type CADCoreEvent =
@@ -640,4 +686,8 @@ export type CADCoreEvent =
   | 'vcs:commit_created'
   | 'vcs:branch_changed'
   | 'vcs:open_modal'
+  | 'perf:metrics_updated'
+  | 'perf:options_changed'
+  | 'perf:open_modal'
+  | 'perf:toggle_hud'
   | 'render:requested';

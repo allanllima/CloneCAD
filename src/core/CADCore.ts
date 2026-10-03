@@ -29,6 +29,9 @@ import {
   CADUserPresence,
   CADCommit,
   CADDiffResult,
+  PerformanceMetrics,
+  GraphicsAccelerationOptions,
+  BigDataStressOptions,
 } from './types';
 import { Viewport } from './Viewport';
 import { HistoryManager } from './HistoryManager';
@@ -89,6 +92,15 @@ export class CADCore implements CADCoreAPI {
   private selectionBox: { start: Point2D; current: Point2D; isCrossing: boolean } | null = null;
   private orthoMode: boolean = false;
   private currentPrompt: string = 'Command:';
+  private performanceHUDVisible: boolean = false;
+  private graphicsOptions: GraphicsAccelerationOptions = {
+    webgpuEnabled: true,
+    frustumCullingEnabled: true,
+    lodEnabled: true,
+    instancedRenderingEnabled: true,
+    workerAccelerationEnabled: true,
+    cullingMargin: 50,
+  };
 
   // Middle-mouse panning state
   private isMiddlePanning = false;
@@ -344,6 +356,10 @@ export class CADCore implements CADCoreAPI {
   }
 
   public getEntity(id: string): CADEntity | undefined {
+    return this.entities.get(id);
+  }
+
+  public getEntityById(id: string): CADEntity | undefined {
     return this.entities.get(id);
   }
 
@@ -1326,5 +1342,156 @@ export class CADCore implements CADCoreAPI {
 
   public openVersionControlModal(): void {
     this.eventBus.emit('vcs:open_modal');
+  }
+
+  // ---------------------------------------------------------------------------
+  // WebGPU & Big Data Graphics Acceleration (Phase 8)
+  // ---------------------------------------------------------------------------
+  public getPerformanceMetrics(): PerformanceMetrics {
+    if (this.renderer) {
+      return this.renderer.getPerformanceMetrics();
+    }
+    return {
+      fps: 60,
+      frameTimeMs: 16.6,
+      totalEntities: this.entities.size,
+      renderedEntities: this.entities.size,
+      culledEntities: 0,
+      cullingRatio: 0,
+      drawCalls: 0,
+      activeLOD: 'HIGH',
+      rendererBackend: 'WebGL2',
+      workerActive: false,
+      instancedBatches: 0,
+      memoryEstimateMB: 0,
+    };
+  }
+
+  public getGraphicsOptions(): GraphicsAccelerationOptions {
+    if (this.renderer) {
+      return this.renderer.getGraphicsOptions();
+    }
+    return { ...this.graphicsOptions };
+  }
+
+  public setGraphicsOptions(options: Partial<GraphicsAccelerationOptions>): void {
+    this.graphicsOptions = {
+      ...this.graphicsOptions,
+      ...options,
+    };
+    if (this.renderer) {
+      this.renderer.setGraphicsOptions(this.graphicsOptions);
+    }
+    this.eventBus.emit('perf:options_changed', this.graphicsOptions);
+    this.requestRender();
+  }
+
+  public generateStressEntities(
+    count: number,
+    areaSize: number = 2000,
+    entityType: 'line' | 'circle' | 'rectangle' | 'mixed' = 'mixed'
+  ): number {
+    const colors = ['#e06c75', '#98c379', '#e5c07b', '#61afef', '#c678dd', '#56b6c2'];
+    const activeLayerId = this.layers.getActiveLayer().id;
+
+    for (let i = 0; i < count; i++) {
+      const entId = 'stress_' + Date.now().toString(36) + '_' + i;
+      const color = colors[i % colors.length];
+      const type =
+        entityType === 'mixed'
+          ? i % 3 === 0
+            ? 'line'
+            : i % 3 === 1
+            ? 'circle'
+            : 'rectangle'
+          : entityType;
+
+      const x = (Math.random() - 0.5) * areaSize;
+      const y = (Math.random() - 0.5) * areaSize;
+
+      let newEnt: CADEntity;
+      if (type === 'line') {
+        const len = 20 + Math.random() * 80;
+        const angle = Math.random() * Math.PI * 2;
+        newEnt = {
+          id: entId,
+          type: 'line',
+          layerId: activeLayerId,
+          color,
+          start: { x, y },
+          end: { x: x + Math.cos(angle) * len, y: y + Math.sin(angle) * len },
+          visible: true,
+        } as any;
+      } else if (type === 'circle') {
+        const radius = 10 + Math.random() * 40;
+        newEnt = {
+          id: entId,
+          type: 'circle',
+          layerId: activeLayerId,
+          color,
+          center: { x, y },
+          radius,
+          visible: true,
+        } as any;
+      } else {
+        const w = 15 + Math.random() * 60;
+        const h = 15 + Math.random() * 60;
+        newEnt = {
+          id: entId,
+          type: 'rectangle',
+          layerId: activeLayerId,
+          color,
+          origin: { x, y },
+          basePoint: { x, y },
+          width: w,
+          height: h,
+          visible: true,
+        } as any;
+      }
+
+      this.entities.set(entId, newEnt);
+      this.selection.indexEntity(newEnt);
+    }
+
+    this.eventBus.emit('entity:added');
+    this.eventBus.emit('perf:metrics_updated');
+    this.requestRender();
+    return count;
+  }
+
+  public clearStressEntities(): void {
+    const stressIds: string[] = [];
+    for (const [id] of this.entities) {
+      if (id.startsWith('stress_')) {
+        stressIds.push(id);
+      }
+    }
+
+    for (const id of stressIds) {
+      this.entities.delete(id);
+      this.selection.unindexEntity(id);
+    }
+
+    this.eventBus.emit('entity:removed');
+    this.eventBus.emit('perf:metrics_updated');
+    this.requestRender();
+  }
+
+  public openPerformanceModal(): void {
+    this.eventBus.emit('perf:open_modal');
+  }
+
+  public togglePerformanceHUD(): void {
+    this.performanceHUDVisible = !this.performanceHUDVisible;
+    this.eventBus.emit('perf:toggle_hud', this.performanceHUDVisible);
+  }
+
+  public isPerformanceHUDVisible(): boolean {
+    return this.performanceHUDVisible;
+  }
+
+  public setPerformanceHUDVisible(visible: boolean): void {
+    this.performanceHUDVisible = visible;
+    this.eventBus.emit('perf:toggle_hud', this.performanceHUDVisible);
   }
 }

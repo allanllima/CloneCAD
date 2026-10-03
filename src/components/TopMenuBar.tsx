@@ -324,6 +324,27 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               >
                 Reset Camera (Origin)
               </button>
+              <div className="border-t border-[#3a3f4b] my-1" />
+              <button
+                onClick={() => {
+                  core.togglePerformanceHUD();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Monitor Performance HUD</span>
+                <span className="text-[#5c6370] text-[10px]">FPS</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.openPerformanceModal();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Aceleração WebGPU & Big Data</span>
+                <span className="text-[#5c6370] text-[10px]">Fase 8</span>
+              </button>
             </div>
           )}
         </div>

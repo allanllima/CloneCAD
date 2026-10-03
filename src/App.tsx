@@ -20,6 +20,8 @@ import { RasterImageModal } from './components/RasterImageModal';
 import { ScriptEditorModal } from './components/ScriptEditorModal';
 import { CollaborationModal } from './components/CollaborationModal';
 import { VersionControlModal } from './components/VersionControlModal';
+import { PerformanceHUD } from './components/PerformanceHUD';
+import { GraphicAccelerationModal } from './components/GraphicAccelerationModal';
 import { loadSampleDrawing } from './utils/sampleDrawings';
 import { BlockReferenceEntity } from './core/types';
 
@@ -45,6 +47,8 @@ export const App: React.FC = () => {
   const [isScriptEditorOpen, setIsScriptEditorOpen] = useState(false);
   const [isCollabOpen, setIsCollabOpen] = useState(false);
   const [isVCSOpen, setIsVCSOpen] = useState(false);
+  const [isPerfHUDOpen, setIsPerfHUDOpen] = useState(false);
+  const [isPerfModalOpen, setIsPerfModalOpen] = useState(false);
   const [attributesModalEntity, setAttributesModalEntity] = useState<BlockReferenceEntity | null>(null);
   const [showDynamicInput, setShowDynamicInput] = useState(true);
 
@@ -85,11 +89,21 @@ export const App: React.FC = () => {
     const unsubVcs = core.on('vcs:open_modal', () => {
       setIsVCSOpen(true);
     });
+    const unsubPerfModal = core.on('perf:open_modal', () => {
+      setIsPerfModalOpen(true);
+    });
+    const unsubPerfHUD = core.on('perf:toggle_hud', (val: boolean) => {
+      setIsPerfHUDOpen(val);
+    });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
         e.preventDefault();
         setIsPlotModalOpen(true);
+      }
+      if (e.key === 'F3') {
+        e.preventDefault();
+        core.togglePerformanceHUD();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -105,6 +119,8 @@ export const App: React.FC = () => {
       unsubScript();
       unsubCollab();
       unsubVcs();
+      unsubPerfModal();
+      unsubPerfHUD();
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [core]);
@@ -249,6 +265,23 @@ export const App: React.FC = () => {
         core={core}
         isOpen={isVCSOpen}
         onClose={() => setIsVCSOpen(false)}
+      />
+
+      {/* Phase 8: WebGPU & Big Data HUD and Acceleration Modal */}
+      <PerformanceHUD
+        core={core}
+        visible={isPerfHUDOpen}
+        onClose={() => {
+          setIsPerfHUDOpen(false);
+          core.setPerformanceHUDVisible(false);
+        }}
+        onOpenSettings={() => setIsPerfModalOpen(true)}
+      />
+
+      <GraphicAccelerationModal
+        core={core}
+        isOpen={isPerfModalOpen}
+        onClose={() => setIsPerfModalOpen(false)}
       />
     </div>
   );

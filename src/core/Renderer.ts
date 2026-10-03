@@ -18,6 +18,9 @@ import {
   CADDimStyle,
   CADLayout,
   LayoutViewport,
+  PerformanceMetrics,
+  GraphicsAccelerationOptions,
+  LODLevel,
 } from './types';
 import { LayoutManager } from './layout/LayoutManager';
 import { Viewport } from './Viewport';
@@ -27,6 +30,11 @@ import { EllipseUtils } from './geometry/EllipseUtils';
 import { HatchUtils } from './geometry/HatchUtils';
 import { PolygonBooleanUtils } from './geometry/PolygonBooleanUtils';
 import { TrackingRay } from './TrackingEngine';
+import { FrustumCuller } from './gpu/FrustumCuller';
+import { LODManager } from './gpu/LODManager';
+import { InstancedBatchManager, BatchedLineItem } from './gpu/InstancedBatchManager';
+import { WebGPUManager } from './gpu/WebGPUManager';
+import { CADWorkerBridge } from './workers/CADWorkerBridge';
 
 export class CADRenderer {
   private container: HTMLElement;
@@ -51,6 +59,34 @@ export class CADRenderer {
   // Render loop flag
   private animationFrameId: number | null = null;
   private needsRender = false;
+
+  // Phase 8: Graphics Acceleration & Telemetry
+  private graphicsOptions: GraphicsAccelerationOptions = {
+    webgpuEnabled: true,
+    frustumCullingEnabled: true,
+    lodEnabled: true,
+    instancedRenderingEnabled: true,
+    workerAccelerationEnabled: true,
+    cullingMargin: 50,
+  };
+  private batchManager: InstancedBatchManager = new InstancedBatchManager();
+  private lastPerformanceMetrics: PerformanceMetrics = {
+    fps: 60,
+    frameTimeMs: 16.6,
+    totalEntities: 0,
+    renderedEntities: 0,
+    culledEntities: 0,
+    cullingRatio: 0,
+    drawCalls: 0,
+    activeLOD: 'HIGH',
+    rendererBackend: 'WebGL2',
+    workerActive: false,
+    instancedBatches: 0,
+    memoryEstimateMB: 0,
+  };
+  private frameCount = 0;
+  private lastFpsTime = typeof performance !== 'undefined' ? performance.now() : 0;
+  private lastFrameTime = typeof performance !== 'undefined' ? performance.now() : 0;
 
   // Materials Cache
   private lineMaterials: Map<string, THREE.LineBasicMaterial> = new Map();
@@ -170,8 +206,26 @@ export class CADRenderer {
   private startLoop(): void {
     const animate = () => {
       this.animationFrameId = requestAnimationFrame(animate);
+
+      if (typeof performance !== 'undefined') {
+        const now = performance.now();
+        const frameDelta = now - this.lastFrameTime;
+        this.lastFrameTime = now;
+        this.frameCount++;
+        if (now - this.lastFpsTime >= 500) {
+          const measuredFps = Math.min(120, Math.round((this.frameCount * 1000) / (now - this.lastFpsTime)));
+          this.lastPerformanceMetrics.fps = measuredFps || 60;
+          this.lastPerformanceMetrics.frameTimeMs = Number(frameDelta.toFixed(2));
+          this.frameCount = 0;
+          this.lastFpsTime = now;
+        }
+      }
+
       if (this.needsRender) {
         this.renderer.render(this.scene, this.camera);
+        if (this.renderer.info && this.renderer.info.render) {
+          this.lastPerformanceMetrics.drawCalls = this.renderer.info.render.calls;
+        }
         this.needsRender = false;
       }
     };
@@ -333,14 +387,34 @@ export class CADRenderer {
   }
 
   // ---------------------------------------------------------------------------
-  // Entity Rendering
+  // Entity Rendering (Phase 8: Culling, LOD, Batching & Telemetry)
   // ---------------------------------------------------------------------------
   public renderEntities(entities: CADEntity[], layers: CADLayer[]): void {
     this.clearGroup(this.entityGroup);
+    this.batchManager.clear();
 
     const layerMap = new Map(layers.map((l) => [l.id, l]));
+    const vpBounds = this.viewport.getVisibleBounds();
+    const zoom = this.viewport.getState().zoom;
 
-    for (const ent of entities) {
+    let targetEntities = entities;
+    let culledCount = 0;
+
+    if (this.graphicsOptions.frustumCullingEnabled) {
+      const cullingResult = FrustumCuller.cull(entities, vpBounds, this.graphicsOptions.cullingMargin);
+      targetEntities = cullingResult.visible;
+      culledCount = cullingResult.culledCount;
+    }
+
+    const currentLOD: LODLevel = this.graphicsOptions.lodEnabled
+      ? LODManager.getLODLevel(60 * zoom)
+      : 'HIGH';
+
+    const useInstancing = this.graphicsOptions.instancedRenderingEnabled && targetEntities.length >= 100;
+    const linesToBatch: BatchedLineItem[] = [];
+
+    let renderedCount = 0;
+    for (const ent of targetEntities) {
       if (ent.visible === false) continue;
       const layer = layerMap.get(ent.layerId);
       if (layer && layer.visible === false) continue;
@@ -350,14 +424,76 @@ export class CADRenderer {
         ? 0x00e5ff
         : this.parseColorToHex(ent.color || (layer ? layer.color : '#ffffff'));
 
-      const material = isSelected ? this.selectedMaterial : this.getOrCreateLineMaterial(colorHex);
+      // If line and instancing is enabled, gather into batch
+      if (useInstancing && ent.type === 'line' && !isSelected) {
+        const line = ent as LineEntity;
+        linesToBatch.push({
+          start: line.start,
+          end: line.end,
+          colorHex,
+          id: ent.id,
+        });
+        renderedCount++;
+        continue;
+      }
 
-      const object3D = this.buildEntityMesh(ent, material);
+      const material = isSelected ? this.selectedMaterial : this.getOrCreateLineMaterial(colorHex);
+      const object3D = this.buildEntityMesh(ent, material, currentLOD);
       if (object3D) {
         this.entityGroup.add(object3D);
+        renderedCount++;
       }
     }
 
+    if (linesToBatch.length > 0) {
+      const batchedGroup = this.batchManager.batchLines(linesToBatch, this.lineMaterials);
+      this.entityGroup.add(batchedGroup);
+    }
+
+    const batchStats = this.batchManager.getStats();
+    const totalCount = entities.length;
+    const cullingRatio = totalCount > 0 ? Number((culledCount / totalCount).toFixed(3)) : 0;
+
+    const webgpuMgr = WebGPUManager.getInstance();
+    const backend = webgpuMgr.getBackendType();
+    const workerBridge = CADWorkerBridge.getInstance();
+
+    this.lastPerformanceMetrics = {
+      ...this.lastPerformanceMetrics,
+      totalEntities: totalCount,
+      renderedEntities: renderedCount,
+      culledEntities: culledCount,
+      cullingRatio,
+      activeLOD: currentLOD,
+      rendererBackend: backend,
+      workerActive: workerBridge.isWorkerActive(),
+      instancedBatches: batchStats.totalBatches,
+      memoryEstimateMB: batchStats.memoryEstimateMB,
+      drawCalls:
+        this.renderer.info?.render?.calls ||
+        (renderedCount > 0
+          ? linesToBatch.length > 0
+            ? batchStats.drawCalls + (renderedCount - linesToBatch.length)
+            : renderedCount
+          : 0),
+    };
+
+    this.requestRender();
+  }
+
+  public getPerformanceMetrics(): PerformanceMetrics {
+    return { ...this.lastPerformanceMetrics };
+  }
+
+  public getGraphicsOptions(): GraphicsAccelerationOptions {
+    return { ...this.graphicsOptions };
+  }
+
+  public setGraphicsOptions(options: Partial<GraphicsAccelerationOptions>): void {
+    this.graphicsOptions = {
+      ...this.graphicsOptions,
+      ...options,
+    };
     this.requestRender();
   }
 
@@ -712,7 +848,7 @@ export class CADRenderer {
   // ---------------------------------------------------------------------------
   // Entity Geometry Builders
   // ---------------------------------------------------------------------------
-  private buildEntityMesh(ent: CADEntity, material: THREE.Material): THREE.Object3D | null {
+  private buildEntityMesh(ent: CADEntity, material: THREE.Material, lod: LODLevel = 'HIGH'): THREE.Object3D | null {
     switch (ent.type) {
       case 'line': {
         const line = ent as any;
@@ -729,7 +865,9 @@ export class CADRenderer {
 
       case 'circle': {
         const circle = ent as any;
-        const segments = Math.max(32, Math.min(128, Math.round(circle.radius * 2)));
+        const segments = this.graphicsOptions.lodEnabled
+          ? LODManager.getCircleSegments(lod)
+          : Math.max(32, Math.min(128, Math.round(circle.radius * 2)));
         const geom = new THREE.BufferGeometry();
         const positions: number[] = [];
         for (let i = 0; i <= segments; i++) {
@@ -746,8 +884,8 @@ export class CADRenderer {
 
       case 'rectangle': {
         const rect = ent as any;
-        const x = rect.origin.x;
-        const y = rect.origin.y;
+        const x = rect.origin ? rect.origin.x : (rect.basePoint ? rect.basePoint.x : 0);
+        const y = rect.origin ? rect.origin.y : (rect.basePoint ? rect.basePoint.y : 0);
         const w = rect.width;
         const h = rect.height;
         const positions = [
@@ -810,7 +948,8 @@ export class CADRenderer {
         if (pts.length < 2) return null;
 
         const group = new THREE.Group();
-        const sampled = SplineUtils.sampleSpline(pts, spl.closed, 24);
+        const samples = this.graphicsOptions.lodEnabled ? LODManager.getSplineSamples(lod) : 24;
+        const sampled = SplineUtils.sampleSpline(pts, spl.closed, samples);
         const positions: number[] = [];
         for (const p of sampled) {
           positions.push(p.x, p.y, 5);
@@ -844,6 +983,7 @@ export class CADRenderer {
 
       case 'ellipse': {
         const el = ent as any;
+        const segments = this.graphicsOptions.lodEnabled ? LODManager.getEllipseSegments(lod) : 64;
         const sampled = EllipseUtils.sampleEllipse(
           el.center,
           el.radiusX,
@@ -851,7 +991,7 @@ export class CADRenderer {
           el.rotation || 0,
           el.startAngle || 0,
           el.endAngle || Math.PI * 2,
-          64
+          segments
         );
         const positions: number[] = [];
         for (const p of sampled) {
@@ -866,6 +1006,18 @@ export class CADRenderer {
         const h = ent as any;
         const poly: Point2D[] = h.boundary || [];
         if (poly.length < 3) return null;
+
+        // In SUBPIXEL lod, skip internal hatch stripes to save draw calls
+        if (this.graphicsOptions.lodEnabled && lod === 'SUBPIXEL') {
+          const outlinePositions: number[] = [];
+          for (const p of poly) {
+            outlinePositions.push(p.x, p.y, 5);
+          }
+          outlinePositions.push(poly[0].x, poly[0].y, 5);
+          const outlineGeom = new THREE.BufferGeometry();
+          outlineGeom.setAttribute('position', new THREE.Float32BufferAttribute(outlinePositions, 3));
+          return new THREE.Line(outlineGeom, material);
+        }
 
         const group = new THREE.Group();
 
@@ -922,11 +1074,11 @@ export class CADRenderer {
 
       case 'arc': {
         const arc = ent as any;
-        const segments = 48;
         let s = arc.startAngle;
         let e = arc.endAngle;
         if (e < s) e += Math.PI * 2;
         const sweep = e - s;
+        const segments = this.graphicsOptions.lodEnabled ? LODManager.getArcSegments(lod, sweep) : 48;
 
         const positions: number[] = [];
         for (let i = 0; i <= segments; i++) {
@@ -944,6 +1096,10 @@ export class CADRenderer {
 
       case 'text': {
         const txt = ent as any;
+        const { zoom } = this.viewport.getState();
+        if (this.graphicsOptions.lodEnabled && lod === 'SUBPIXEL' && !LODManager.shouldRenderText(txt.fontSize || 12, zoom)) {
+          return null;
+        }
         return this.buildTextSprite(txt);
       }
 

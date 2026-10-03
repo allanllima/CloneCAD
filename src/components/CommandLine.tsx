@@ -373,6 +373,51 @@ export const CommandLine: React.FC<CommandLineProps> = ({
         core.openVersionControlModal();
         break;
 
+      // WebGPU, Big Data & Performance (Phase 8)
+      case 'WEBGPU':
+      case 'GPU':
+      case 'PERF':
+      case 'ACCEL':
+        core.openPerformanceModal();
+        break;
+
+      case 'HUD':
+      case 'FPS':
+        core.togglePerformanceHUD();
+        core.logCommandMessage(`Performance HUD: ${core.isPerformanceHUDVisible() ? 'ON' : 'OFF'}`);
+        break;
+
+      case 'CULL':
+      case 'CULLING':
+        {
+          const opts = core.getGraphicsOptions();
+          core.setGraphicsOptions({ frustumCullingEnabled: !opts.frustumCullingEnabled });
+          core.logCommandMessage(`Frustum Culling: ${!opts.frustumCullingEnabled ? 'ON' : 'OFF'}`);
+        }
+        break;
+
+      case 'LOD':
+        {
+          const opts = core.getGraphicsOptions();
+          core.setGraphicsOptions({ lodEnabled: !opts.lodEnabled });
+          core.logCommandMessage(`Adaptive LOD: ${!opts.lodEnabled ? 'ON' : 'OFF'}`);
+        }
+        break;
+
+      case 'STRESS':
+      case 'BIGDATA':
+        {
+          const count = parts[1] ? parseInt(parts[1], 10) : 5000;
+          const added = core.generateStressEntities(isNaN(count) ? 5000 : count);
+          core.logCommandMessage(`Big Data Stress: +${added.toLocaleString()} entidades geradas.`);
+        }
+        break;
+
+      case 'CLEARSTRESS':
+        core.clearStressEntities();
+        core.logCommandMessage('Entidades de estresse removidas da cena.');
+        break;
+
       // Navigation & View
       case 'P':
       case 'PAN':

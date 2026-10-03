@@ -43,6 +43,7 @@ import {
   Download,
   Terminal,
   Users,
+  Zap,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
@@ -640,6 +641,15 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
           >
             <GitCommit size={17} />
             <span className="text-[9px] mt-0.5 font-medium">Git Diff</span>
+          </button>
+
+          <button
+            onClick={() => core.togglePerformanceHUD()}
+            title="Monitor de Performance & WebGPU (HUD / FPS)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] hover:bg-[#282c34] text-[#e5c07b] hover:text-white"
+          >
+            <Zap size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">GPU/HUD</span>
           </button>
         </div>
         <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
