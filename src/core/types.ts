@@ -527,7 +527,7 @@ export interface CADCoreAPI {
 
   // Coordinate Conversion (World <-> Screen)
   screenToWorld(screenX: number, screenY: number): Point2D;
-  worldToScreen(worldX: number, worldY: number): Point2D;
+  worldToScreen(worldX: number | Point2D, worldY?: number): Point2D;
 
   // Viewport Control
   getViewport(): ViewportState;

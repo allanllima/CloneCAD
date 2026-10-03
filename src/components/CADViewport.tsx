@@ -108,6 +108,8 @@ export const CADViewport: React.FC<CADViewportProps> = ({ core, showDynamicInput
     setCurrentSnap(null);
   };
 
+  const snapScreenPos = currentSnap ? core.worldToScreen(currentSnap.point) : null;
+
   return (
     <div
       ref={containerRef}
@@ -136,6 +138,7 @@ export const CADViewport: React.FC<CADViewportProps> = ({ core, showDynamicInput
         screenPos={screenPos}
         worldPos={worldPos}
         snap={currentSnap}
+        snapScreenPos={snapScreenPos}
         activePrompt={prompt}
         showDynamicInput={showDynamicInput}
         viewportWidth={dimensions.width}

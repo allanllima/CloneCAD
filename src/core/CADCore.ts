@@ -418,8 +418,11 @@ export class CADCore implements CADCoreAPI {
     return this.viewport.screenToWorld(screenX, screenY);
   }
 
-  public worldToScreen(worldX: number, worldY: number): Point2D {
-    return this.viewport.worldToScreen(worldX, worldY);
+  public worldToScreen(worldX: number | Point2D, worldY?: number): Point2D {
+    if (typeof worldX === 'object' && worldX !== null) {
+      return this.viewport.worldToScreen(worldX.x, worldX.y);
+    }
+    return this.viewport.worldToScreen(worldX, worldY ?? 0);
   }
 
   // ---------------------------------------------------------------------------
@@ -487,16 +490,29 @@ export class CADCore implements CADCoreAPI {
     const tolScreen = this.snapEngine.getSettings().snapToleranceScreen;
     const tolWorld = tolScreen / this.viewport.getState().zoom;
 
-    const candidateIds = this.selection.getSpatialIndex().searchPoint(rawWorldPoint, tolWorld * 1.5);
+    // Expand search radius by 2.5x to ensure adjacent vertices and intersecting segments are captured
+    const candidateIds = this.selection.getSpatialIndex().searchPoint(rawWorldPoint, tolWorld * 2.5);
     const candidateEntities = candidateIds.length > 0
       ? candidateIds.map((id) => this.entities.get(id)).filter((e): e is CADEntity => !!e)
       : this.getEntities();
 
+    let basePoint: Point2D | undefined;
+    if (this.activeTool) {
+      if (typeof (this.activeTool as any).getBasePoint === 'function') {
+        basePoint = (this.activeTool as any).getBasePoint();
+      } else if ((this.activeTool as any).basePoint) {
+        basePoint = (this.activeTool as any).basePoint;
+      } else if ((this.activeTool as any).startPoint) {
+        basePoint = (this.activeTool as any).startPoint;
+      }
+    }
+
     return this.snapEngine.findSnap(
       candidateEntities,
       rawWorldPoint,
-      (w) => this.worldToScreen(w.x, w.y),
-      rawScreenPoint
+      (w) => this.worldToScreen(w),
+      rawScreenPoint,
+      basePoint
     );
   }
 
