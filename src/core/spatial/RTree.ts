@@ -84,6 +84,10 @@ export class RTree2D {
     return results;
   }
 
+  public searchBox(queryBox: BoundingBox2D): string[] {
+    return this.search(queryBox);
+  }
+
   /**
    * Search for entities within tolerance of a point
    */

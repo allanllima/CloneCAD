@@ -83,6 +83,31 @@ export class IntersectionUtils {
   }
 
   /**
+   * Alias for segmentSegmentIntersection
+   */
+  public static lineSegmentIntersection(
+    p1: Point2D,
+    p2: Point2D,
+    p3: Point2D,
+    p4: Point2D,
+    tolerance = 1e-5
+  ): Point2D | null {
+    return this.segmentSegmentIntersection(p1, p2, p3, p4, tolerance);
+  }
+
+  /**
+   * Alias for lineSegmentCircleIntersections
+   */
+  public static lineCircleIntersection(
+    p1: Point2D,
+    p2: Point2D,
+    center: Point2D,
+    radius: number
+  ): Point2D[] {
+    return this.lineSegmentCircleIntersections(p1, p2, center, radius);
+  }
+
+  /**
    * Reflect a point across an infinite line passing through axisStart and axisEnd
    */
   public static reflectPointAcrossLine(

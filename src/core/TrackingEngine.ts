@@ -14,6 +14,7 @@ export interface TrackingResult {
 }
 
 export class TrackingEngine {
+  private orthoEnabled = false;
   private polarEnabled = false;
   private polarIncrementDeg = 45; // default 45 degrees (45, 90, 135, 180, etc.)
   private otrackEnabled = true;
@@ -21,12 +22,38 @@ export class TrackingEngine {
   private maxAcquiredPoints = 4;
   private angularToleranceRad = (2.5 * Math.PI) / 180; // 2.5 degrees tolerance
 
+  public isOrthoEnabled(): boolean {
+    return this.orthoEnabled;
+  }
+
+  public setOrtho(enabled: boolean): void {
+    this.orthoEnabled = enabled;
+  }
+
+  public snapOrtho(basePoint: Point2D, current: Point2D): Point2D {
+    const dx = Math.abs(current.x - basePoint.x);
+    const dy = Math.abs(current.y - basePoint.y);
+    if (dx >= dy) {
+      return { x: current.x, y: basePoint.y };
+    } else {
+      return { x: basePoint.x, y: current.y };
+    }
+  }
+
   public isPolarEnabled(): boolean {
     return this.polarEnabled;
   }
 
   public setPolarEnabled(enabled: boolean): void {
     this.polarEnabled = enabled;
+  }
+
+  public setPolarTracking(enabled: boolean): void {
+    this.setPolarEnabled(enabled);
+  }
+
+  public snapPolar(basePoint: Point2D, current: Point2D, zoom = 1): TrackingResult | null {
+    return this.evaluateTracking(current, basePoint, zoom);
   }
 
   public getPolarIncrement(): number {
