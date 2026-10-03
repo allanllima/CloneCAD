@@ -29,14 +29,25 @@ import {
   CornerUpRight,
   ChevronsRight,
   Split,
+  Box,
+  FolderPlus,
+  Library,
+  Sparkles,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
   core: CADCore;
   onOpenLayers: () => void;
+  onOpenDesignCenter?: () => void;
+  onOpenCreateBlock?: () => void;
 }
 
-export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({ core, onOpenLayers }) => {
+export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
+  core,
+  onOpenLayers,
+  onOpenDesignCenter,
+  onOpenCreateBlock,
+}) => {
   const [activeToolId, setActiveToolId] = useState<string | null>(core.getActiveTool()?.id || 'select');
   const [layers, setLayers] = useState<CADLayer[]>(core.getLayers());
   const [activeLayer, setActiveLayer] = useState<CADLayer>(core.getActiveLayer());
@@ -382,6 +393,19 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({ core, onOpenLayers
           </button>
 
           <button
+            onClick={() => selectTool('explode')}
+            title="Explode (X)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'explode'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Sparkles size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Explode</span>
+          </button>
+
+          <button
             onClick={() => selectTool('erase')}
             title="Erase (E)"
             className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
@@ -396,6 +420,49 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({ core, onOpenLayers
         </div>
         <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
           Modify
+        </span>
+      </div>
+
+      {/* 4. BLOCK PANEL */}
+      <div className="flex flex-col items-center border-r border-[#3a3f4b] pr-2 justify-between">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => (onOpenCreateBlock ? onOpenCreateBlock() : selectTool('block'))}
+            title="Create Block (B)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'block'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Box size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Create</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('insert')}
+            title="Insert Block (I)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'insert'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <FolderPlus size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Insert</span>
+          </button>
+
+          <button
+            onClick={() => onOpenDesignCenter?.()}
+            title="Design Center / Symbol Library (DC / ADCENTER)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[46px] hover:bg-[#282c34] text-[#61afef] hover:text-white"
+          >
+            <Library size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Library</span>
+          </button>
+        </div>
+        <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
+          Block
         </span>
       </div>
 

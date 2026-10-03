@@ -1,5 +1,19 @@
 import * as THREE from 'three';
-import { CADEntity, CADLayer, Point2D, ViewportState } from './types';
+import {
+  CADEntity,
+  CADLayer,
+  Point2D,
+  ViewportState,
+  CADGrip,
+  CADBlockDefinition,
+  BlockReferenceEntity,
+  TextEntity,
+  LineEntity,
+  CircleEntity,
+  RectangleEntity,
+  ArcEntity,
+  EllipseEntity,
+} from './types';
 import { Viewport } from './Viewport';
 import { BulgeUtils } from './geometry/BulgeUtils';
 import { SplineUtils } from './geometry/SplineUtils';
@@ -22,6 +36,9 @@ export class CADRenderer {
   private selectionBoxGroup: THREE.Group;
   private ucsGroup: THREE.Group;
   private trackingGroup: THREE.Group;
+  private gripsGroup: THREE.Group;
+
+  private blockResolver?: (name: string) => CADBlockDefinition | undefined;
 
   // Render loop flag
   private animationFrameId: number | null = null;
@@ -69,6 +86,7 @@ export class CADRenderer {
     this.selectionBoxGroup = new THREE.Group();
     this.ucsGroup = new THREE.Group();
     this.trackingGroup = new THREE.Group();
+    this.gripsGroup = new THREE.Group();
 
     this.scene.add(this.gridGroup);
     this.scene.add(this.entityGroup);
@@ -76,6 +94,7 @@ export class CADRenderer {
     this.scene.add(this.selectionBoxGroup);
     this.scene.add(this.ucsGroup);
     this.scene.add(this.trackingGroup);
+    this.scene.add(this.gripsGroup);
 
     // 5. Materials
     this.selectedMaterial = new THREE.LineBasicMaterial({
@@ -326,12 +345,6 @@ export class CADRenderer {
       const object3D = this.buildEntityMesh(ent, material);
       if (object3D) {
         this.entityGroup.add(object3D);
-
-        // If selected, add AutoCAD grip points (small squares at critical points)
-        if (isSelected) {
-          const grips = this.buildGrips(ent);
-          if (grips) this.entityGroup.add(grips);
-        }
       }
     }
 
@@ -448,6 +461,64 @@ export class CADRenderer {
       line.computeLineDistances();
       this.trackingGroup.add(line);
     });
+
+    this.requestRender();
+  }
+
+  public setBlockResolver(resolver: (name: string) => CADBlockDefinition | undefined): void {
+    this.blockResolver = resolver;
+  }
+
+  public renderGrips(grips: CADGrip[] | null, activeGripId?: string | null): void {
+    this.clearGroup(this.gripsGroup);
+    if (!grips || grips.length === 0) {
+      this.requestRender();
+      return;
+    }
+
+    const { zoom } = this.viewport.getState();
+    const halfSize = 4 / zoom; // ~8px screen size
+
+    for (const grip of grips) {
+      const isHot = grip.id === activeGripId;
+      const x = grip.position.x;
+      const y = grip.position.y;
+
+      const shape = new THREE.Shape();
+      shape.moveTo(x - halfSize, y - halfSize);
+      shape.lineTo(x + halfSize, y - halfSize);
+      shape.lineTo(x + halfSize, y + halfSize);
+      shape.lineTo(x - halfSize, y + halfSize);
+      shape.closePath();
+
+      const geom = new THREE.ShapeGeometry(shape);
+      const mat = new THREE.MeshBasicMaterial({
+        color: isHot ? 0xe06c75 : 0x007acc,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.z = 28;
+
+      const borderGeom = new THREE.BufferGeometry();
+      borderGeom.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(
+          [
+            x - halfSize, y - halfSize, 29,
+            x + halfSize, y - halfSize, 29,
+            x + halfSize, y + halfSize, 29,
+            x - halfSize, y + halfSize, 29,
+            x - halfSize, y - halfSize, 29,
+          ],
+          3
+        )
+      );
+      const borderMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 1.5 });
+      const border = new THREE.Line(borderGeom, borderMat);
+
+      this.gripsGroup.add(mesh);
+      this.gripsGroup.add(border);
+    }
 
     this.requestRender();
   }
@@ -690,9 +761,78 @@ export class CADRenderer {
         return this.buildTextSprite(txt);
       }
 
+      case 'insert': {
+        const ins = ent as BlockReferenceEntity;
+        const def = this.blockResolver ? this.blockResolver(ins.blockName) : undefined;
+        if (!def) return null;
+
+        const group = new THREE.Group();
+        group.position.set(ins.position.x, ins.position.y, 5);
+        group.rotation.z = ins.rotation || 0;
+        group.scale.set(ins.scale?.x ?? 1, ins.scale?.y ?? 1, 1);
+
+        for (const sub of def.entities) {
+          const shifted = this.shiftEntityByOffset(sub, -def.basePoint.x, -def.basePoint.y);
+          const subMesh = this.buildEntityMesh(shifted, material);
+          if (subMesh) {
+            group.add(subMesh);
+          }
+        }
+
+        if (def.attributes) {
+          for (const attr of def.attributes) {
+            const val = ins.attributeValues?.[attr.tag] ?? attr.defaultValue;
+            const attrText: TextEntity = {
+              id: `attr_${ins.id}_${attr.tag}`,
+              type: 'text',
+              layerId: ins.layerId,
+              position: {
+                x: attr.position.x - def.basePoint.x,
+                y: attr.position.y - def.basePoint.y,
+              },
+              text: val,
+              fontSize: attr.fontSize || 10,
+              visible: true,
+            };
+            const textSprite = this.buildTextSprite(attrText);
+            group.add(textSprite);
+          }
+        }
+
+        return group;
+      }
+
       default:
         return null;
     }
+  }
+
+  private shiftEntityByOffset(ent: CADEntity, dx: number, dy: number): CADEntity {
+    const copy = JSON.parse(JSON.stringify(ent)) as CADEntity;
+    if (copy.type === 'line') {
+      const l = copy as LineEntity;
+      l.start.x += dx; l.start.y += dy;
+      l.end.x += dx; l.end.y += dy;
+    } else if (copy.type === 'circle') {
+      const c = copy as CircleEntity;
+      c.center.x += dx; c.center.y += dy;
+    } else if (copy.type === 'rectangle') {
+      const r = copy as RectangleEntity;
+      r.origin.x += dx; r.origin.y += dy;
+    } else if (copy.type === 'arc') {
+      const a = copy as ArcEntity;
+      a.center.x += dx; a.center.y += dy;
+    } else if (copy.type === 'ellipse') {
+      const el = copy as EllipseEntity;
+      el.center.x += dx; el.center.y += dy;
+    } else if (copy.type === 'text') {
+      const t = copy as TextEntity;
+      t.position.x += dx; t.position.y += dy;
+    } else if (copy.type === 'hatch') {
+      const h = copy as any;
+      h.boundary = h.boundary.map((p: Point2D) => ({ x: p.x + dx, y: p.y + dy }));
+    }
+    return copy;
   }
 
   // ---------------------------------------------------------------------------

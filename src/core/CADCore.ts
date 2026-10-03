@@ -11,6 +11,8 @@ import {
   SnapResult,
   SnapSettings,
   ViewportState,
+  CADBlockDefinition,
+  CADGrip,
 } from './types';
 import { Viewport } from './Viewport';
 import { HistoryManager } from './HistoryManager';
@@ -20,6 +22,9 @@ import { SnapEngine } from './SnapEngine';
 import { EventBus } from './EventBus';
 import { CADRenderer } from './Renderer';
 import { TrackingEngine, TrackingRay } from './TrackingEngine';
+import { BlockManager } from './BlockManager';
+import { GripManager } from './GripManager';
+import { ModifyEntityCommand } from '../commands/ModifyEntityCommand';
 
 export class CADCore implements CADCoreAPI {
   // Subsystems
@@ -29,6 +34,8 @@ export class CADCore implements CADCoreAPI {
   private selection: SelectionManager;
   private snapEngine: SnapEngine;
   private trackingEngine: TrackingEngine;
+  private blockManager: BlockManager;
+  private gripManager: GripManager;
   private eventBus: EventBus;
   private renderer: CADRenderer | null = null;
 
@@ -53,6 +60,8 @@ export class CADCore implements CADCoreAPI {
     this.viewport = new Viewport(width, height);
     this.snapEngine = new SnapEngine();
     this.trackingEngine = new TrackingEngine();
+    this.blockManager = new BlockManager(() => this.eventBus.emit('block:registered'));
+    this.gripManager = new GripManager();
 
     this.layers = new LayerManager(() => {
       this.eventBus.emit('layer:changed');
@@ -83,6 +92,7 @@ export class CADCore implements CADCoreAPI {
       this.renderer.destroy();
     }
     this.renderer = new CADRenderer(container, this.viewport);
+    this.renderer.setBlockResolver((name) => this.blockManager.getBlock(name));
     this.requestRender();
   }
 
@@ -463,6 +473,52 @@ export class CADCore implements CADCoreAPI {
   }
 
   // ---------------------------------------------------------------------------
+  // Block Subsystem
+  // ---------------------------------------------------------------------------
+  public registerBlockDefinition(def: CADBlockDefinition): void {
+    this.blockManager.registerBlock(def);
+    this.logCommandMessage(`Block "${def.name}" defined.`);
+    this.eventBus.emit('block:registered');
+  }
+
+  public getBlockDefinition(name: string): CADBlockDefinition | undefined {
+    return this.blockManager.getBlock(name);
+  }
+
+  public getBlockDefinitions(): CADBlockDefinition[] {
+    return this.blockManager.getAllBlocks();
+  }
+
+  public hasBlockDefinition(name: string): boolean {
+    return this.blockManager.hasBlock(name);
+  }
+
+  public getBlockManager(): BlockManager {
+    return this.blockManager;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Grip Subsystem
+  // ---------------------------------------------------------------------------
+  public getActiveGrip(): CADGrip | null {
+    return this.gripManager.getActiveGrip();
+  }
+
+  public setActiveGrip(grip: CADGrip | null): void {
+    this.gripManager.setActiveGrip(grip);
+    this.eventBus.emit('grip:changed');
+    this.requestRender();
+  }
+
+  public getEntityGrips(entity: CADEntity): CADGrip[] {
+    return this.gripManager.getEntityGrips(entity);
+  }
+
+  public getGripManager(): GripManager {
+    return this.gripManager;
+  }
+
+  // ---------------------------------------------------------------------------
   // Render & Previews
   // ---------------------------------------------------------------------------
   public requestRender(): void {
@@ -470,6 +526,16 @@ export class CADCore implements CADCoreAPI {
       this.renderer.renderEntities(this.getEntities(), this.getLayers());
       this.renderer.renderPreview(this.previewEntity);
       this.renderer.renderSelectionBox(this.selectionBox);
+
+      // Render interactive grips for selected entities
+      const selected = this.getSelectedEntities();
+      if (selected.length > 0 && (!this.activeTool || this.activeTool.id === 'select')) {
+        const grips = this.gripManager.generateGrips(selected);
+        this.renderer.renderGrips(grips, this.gripManager.getActiveGrip()?.id);
+      } else {
+        this.renderer.renderGrips(null);
+      }
+
       this.renderer.requestRender();
     }
     this.eventBus.emit('render:requested');
@@ -533,6 +599,43 @@ export class CADCore implements CADCoreAPI {
     }
 
     const event = this.createCADPointerEvent(e, screenX, screenY);
+
+    // Grip Editing Workflow
+    if (e.button === 0 && (!this.activeTool || this.activeTool.id === 'select')) {
+      // 1. If currently stretching an active grip, commit the modification!
+      if (this.gripManager.getActiveGrip()) {
+        const activeGrip = this.gripManager.getActiveGrip()!;
+        const orig = this.gripManager.getOriginalEntityState();
+        if (orig) {
+          const updated = this.gripManager.updateEntityWithGrip(orig, activeGrip, event.world);
+          this.setPreviewEntity(null);
+          this.gripManager.setActiveGrip(null);
+          this.executeCommand(new ModifyEntityCommand(this, orig, updated, 'GRIP STRETCH'));
+          this.setPrompt('Command:');
+          this.requestRender();
+          return;
+        }
+      }
+
+      // 2. If entities are selected, check if user clicked on a grip
+      const selected = this.getSelectedEntities();
+      if (selected.length > 0) {
+        const tol = 10 / this.viewport.getState().zoom;
+        const grips = this.gripManager.generateGrips(selected);
+        const hitGrip = this.gripManager.pickGrip(grips, event.world, tol);
+        if (hitGrip) {
+          const ent = this.getEntity(hitGrip.entityId);
+          if (ent) {
+            this.gripManager.setActiveGrip(hitGrip, ent);
+            this.setPrompt(`** STRETCH ** Specify stretch point:`);
+            this.eventBus.emit('grip:changed');
+            this.requestRender();
+            return;
+          }
+        }
+      }
+    }
+
     if (this.activeTool) {
       this.activeTool.onPointerDown(event);
     }
@@ -549,6 +652,19 @@ export class CADCore implements CADCoreAPI {
 
     const event = this.createCADPointerEvent(e, screenX, screenY);
     this.emit('cursor:moved', event.world);
+
+    // Grip stretch real-time preview
+    if (this.gripManager.getActiveGrip()) {
+      const activeGrip = this.gripManager.getActiveGrip()!;
+      const orig = this.gripManager.getOriginalEntityState();
+      if (orig) {
+        const updated = this.gripManager.updateEntityWithGrip(orig, activeGrip, event.world);
+        this.setPreviewEntity(updated);
+        this.requestRender();
+        return;
+      }
+    }
+
     if (this.activeTool) {
       this.activeTool.onPointerMove(event);
     }
@@ -599,8 +715,16 @@ export class CADCore implements CADCoreAPI {
       this.setOTrack(!this.isOTrack());
       return;
     }
-    // Escape: Cancel active tool or clear selection
+    // Escape: Cancel active grip, active tool, or clear selection
     if (e.key === 'Escape') {
+      if (this.gripManager.getActiveGrip()) {
+        this.gripManager.setActiveGrip(null);
+        this.setPreviewEntity(null);
+        this.setPrompt('Command:');
+        this.requestRender();
+        return;
+      }
+
       if (this.activeTool && this.activeTool.cancel) {
         this.activeTool.cancel();
       }

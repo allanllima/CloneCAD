@@ -143,6 +143,41 @@ export interface HatchEntity extends BaseEntity {
   opacity?: number;
 }
 
+export interface CADBlockAttributeDefinition {
+  tag: string;
+  prompt: string;
+  defaultValue: string;
+  position: Point2D; // relative to block basePoint
+  fontSize?: number;
+}
+
+export interface CADBlockDefinition {
+  id: string;
+  name: string;
+  basePoint: Point2D;
+  entities: CADEntity[];
+  attributes: CADBlockAttributeDefinition[];
+  description?: string;
+  category?: 'architecture' | 'civil' | 'electrical' | 'mechanical' | 'symbols' | 'custom';
+}
+
+export interface BlockReferenceEntity extends BaseEntity {
+  type: 'insert';
+  blockName: string;
+  position: Point2D;
+  scale: { x: number; y: number };
+  rotation: number; // in radians
+  attributeValues: Record<string, string>;
+}
+
+export interface CADGrip {
+  id: string;
+  entityId: string;
+  position: Point2D;
+  type: 'endpoint' | 'midpoint' | 'center' | 'quadrant' | 'vertex' | 'insert';
+  index?: number;
+}
+
 export type CADEntity =
   | LineEntity
   | CircleEntity
@@ -153,6 +188,7 @@ export type CADEntity =
   | SplineEntity
   | EllipseEntity
   | HatchEntity
+  | BlockReferenceEntity
   | (BaseEntity & Record<string, any>);
 
 // -------------------------------------------------------------
@@ -297,6 +333,17 @@ export interface CADCoreAPI {
   isOTrack(): boolean;
   setOTrack(enabled: boolean): void;
 
+  // Block Management
+  registerBlockDefinition(def: CADBlockDefinition): void;
+  getBlockDefinition(name: string): CADBlockDefinition | undefined;
+  getBlockDefinitions(): CADBlockDefinition[];
+  hasBlockDefinition(name: string): boolean;
+
+  // Grip Management
+  getActiveGrip(): CADGrip | null;
+  setActiveGrip(grip: CADGrip | null): void;
+  getEntityGrips(entity: CADEntity): CADGrip[];
+
   // Render & Preview
   requestRender(): void;
   setPreviewEntity(entity: CADEntity | null): void;
@@ -325,5 +372,9 @@ export type CADCoreEvent =
   | 'message:logged'
   | 'snap:changed'
   | 'tracking:changed'
+  | 'block:registered'
+  | 'block:open_create_modal'
+  | 'block:open_attributes_modal'
+  | 'grip:changed'
   | 'cursor:moved'
   | 'render:requested';

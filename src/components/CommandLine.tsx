@@ -3,14 +3,16 @@ import { CADCore } from '../core/CADCore';
 
 interface CommandLineProps {
   core: CADCore;
+  onOpenDesignCenter?: () => void;
+  onOpenCreateBlock?: () => void;
 }
 
-export const CommandLine: React.FC<CommandLineProps> = ({ core }) => {
+export const CommandLine: React.FC<CommandLineProps> = ({ core, onOpenDesignCenter, onOpenCreateBlock }) => {
   const [history, setHistory] = useState<string[]>([
     'CloneCAD Modular Engine [Version 2.0.26]',
     '(c) 2026 CloneCAD Architecture. All rights reserved.',
     'AutoCAD Dark UI Loaded. Microkernel core initialized.',
-    'Type "HELP" or command name (e.g. "LINE", "CIRCLE", "M", "E", "ZOOM").',
+    'Type "HELP" or command name (e.g. "LINE", "CIRCLE", "M", "E", "B", "I", "X").',
   ]);
   const [inputVal, setInputVal] = useState('');
   const [currentPrompt, setCurrentPrompt] = useState('Command:');
@@ -182,6 +184,48 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core }) => {
         core.setActiveTool('array');
         break;
 
+      case 'X':
+      case 'EXPLODE':
+        core.setActiveTool('explode');
+        break;
+
+      // Block commands
+      case 'B':
+      case 'BLOCK':
+        if (onOpenCreateBlock) {
+          onOpenCreateBlock();
+        } else {
+          core.setActiveTool('block');
+        }
+        break;
+
+      case 'I':
+      case 'INSERT':
+        core.setActiveTool('insert');
+        break;
+
+      case 'DC':
+      case 'ADCENTER':
+      case 'DESIGNCENTER':
+        if (onOpenDesignCenter) {
+          onOpenDesignCenter();
+        } else {
+          core.logCommandMessage('Design Center not available.');
+        }
+        break;
+
+      case 'ATTEDIT':
+        {
+          const selected = core.getSelectedEntities();
+          const insertEnt = selected.find((e) => e.type === 'insert');
+          if (insertEnt) {
+            core.emit('block:open_attributes_modal', insertEnt);
+          } else {
+            core.logCommandMessage('ATTEDIT: Select a block reference entity first.');
+          }
+        }
+        break;
+
       // Navigation & View
       case 'P':
       case 'PAN':
@@ -261,7 +305,8 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core }) => {
       case 'HELP':
         core.logCommandMessage('Available commands:');
         core.logCommandMessage('  Draw: LINE (L), PLINE (PL), CIRCLE (C), RECTANGLE (REC), ARC (A), SPLINE (SPL), ELLIPSE (EL), HATCH (H), TEXT (T)');
-        core.logCommandMessage('  Modify: ERASE (E), MOVE (M), COPY (CO), ROTATE (RO), MIRROR (MI), OFFSET (O), FILLET (F), CHAMFER (CHA), TRIM (TR), EXTEND (EX), STRETCH (S), ARRAY (AR)');
+        core.logCommandMessage('  Modify: ERASE (E), MOVE (M), COPY (CO), ROTATE (RO), MIRROR (MI), OFFSET (O), FILLET (F), CHAMFER (CHA), TRIM (TR), EXTEND (EX), STRETCH (S), ARRAY (AR), EXPLODE (X)');
+        core.logCommandMessage('  Blocks: BLOCK (B), INSERT (I), DESIGNCENTER (DC), ATTEDIT');
         core.logCommandMessage('  Precision: ORTHO (F8), POLAR (F10), OTRACK (F11), OSNAP (F3), GRID (F9)');
         core.logCommandMessage('  Navigation: PAN (P), ZOOM (Z E)');
         core.logCommandMessage('  Utility: DIST (DI), UNDO (U), REDO, SELECT (SEL), HELP');

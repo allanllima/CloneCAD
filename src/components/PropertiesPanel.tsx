@@ -397,6 +397,126 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ core, isOpen, 
                   </div>
                 </>
               )}
+
+              {entity.type === 'insert' && (
+                <>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Block Name</span>
+                    <span className="font-mono text-[#61afef] font-semibold">
+                      {(entity as any).blockName}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Pos X</span>
+                    <input
+                      type="number"
+                      step="1"
+                      value={(entity as any).position?.x || 0}
+                      onChange={(e) =>
+                        handleUpdate({
+                          position: {
+                            x: parseFloat(e.target.value) || 0,
+                            y: (entity as any).position?.y || 0,
+                          },
+                        } as any)
+                      }
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Pos Y</span>
+                    <input
+                      type="number"
+                      step="1"
+                      value={(entity as any).position?.y || 0}
+                      onChange={(e) =>
+                        handleUpdate({
+                          position: {
+                            x: (entity as any).position?.x || 0,
+                            y: parseFloat(e.target.value) || 0,
+                          },
+                        } as any)
+                      }
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Rotation (deg)</span>
+                    <input
+                      type="number"
+                      step="5"
+                      value={Math.round((((entity as any).rotation || 0) * 180) / Math.PI)}
+                      onChange={(e) =>
+                        handleUpdate({
+                          rotation: ((parseFloat(e.target.value) || 0) * Math.PI) / 180,
+                        } as any)
+                      }
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Scale X</span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={(entity as any).scale?.x ?? 1}
+                      onChange={(e) =>
+                        handleUpdate({
+                          scale: {
+                            x: parseFloat(e.target.value) || 1,
+                            y: (entity as any).scale?.y ?? 1,
+                          },
+                        } as any)
+                      }
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Scale Y</span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={(entity as any).scale?.y ?? 1}
+                      onChange={(e) =>
+                        handleUpdate({
+                          scale: {
+                            x: (entity as any).scale?.x ?? 1,
+                            y: parseFloat(e.target.value) || 1,
+                          },
+                        } as any)
+                      }
+                      className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                    />
+                  </div>
+
+                  {/* Attributes Section */}
+                  {(entity as any).attributeValues &&
+                    Object.keys((entity as any).attributeValues).length > 0 && (
+                      <div className="mt-3 border-t border-[#3a3f4b] pt-2">
+                        <div className="text-[10px] font-semibold text-[#98c379] uppercase mb-1">
+                          Attributes (ATTDEF)
+                        </div>
+                        {Object.entries((entity as any).attributeValues).map(([tag, val]) => (
+                          <div key={tag} className="flex flex-col py-1 gap-0.5">
+                            <span className="text-[#abb2bf] text-[10px] font-mono">{tag}</span>
+                            <input
+                              type="text"
+                              value={val as string}
+                              onChange={(e) => {
+                                const newAttrs = {
+                                  ...(entity as any).attributeValues,
+                                  [tag]: e.target.value,
+                                };
+                                handleUpdate({ attributeValues: newAttrs } as any);
+                              }}
+                              className="bg-[#181a1f] border border-[#3a3f4b] text-[#e5e9f0] font-mono px-2 py-0.5 rounded outline-none text-[11px]"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </>
+              )}
             </div>
           </div>
         )}

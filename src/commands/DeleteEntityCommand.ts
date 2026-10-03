@@ -6,9 +6,10 @@ export class DeleteEntityCommand implements CADCommand {
   private core: CADCoreAPI;
   private entities: CADEntity[];
 
-  constructor(core: CADCoreAPI, entities: CADEntity[], name = 'ERASE') {
+  constructor(core: CADCoreAPI, entities: CADEntity | CADEntity[], name = 'ERASE') {
     this.core = core;
-    this.entities = entities.map((e) => JSON.parse(JSON.stringify(e)));
+    const list = Array.isArray(entities) ? entities : [entities];
+    this.entities = list.map((e) => JSON.parse(JSON.stringify(e)));
     this.id = `delete_${Date.now()}`;
     this.name = name;
   }

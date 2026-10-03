@@ -21,6 +21,9 @@ import { FilletChamferPlugin } from './modify/FilletChamferPlugin';
 import { TrimExtendPlugin } from './modify/TrimExtendPlugin';
 import { StretchPlugin } from './modify/StretchPlugin';
 import { ArrayPlugin } from './modify/ArrayPlugin';
+import { ExplodePlugin } from './modify/ExplodePlugin';
+import { BlockPlugin } from './block/BlockPlugin';
+import { InsertPlugin } from './block/InsertPlugin';
 
 export * from './utility/SelectPlugin';
 export * from './utility/PanPlugin';
@@ -44,6 +47,9 @@ export * from './modify/FilletChamferPlugin';
 export * from './modify/TrimExtendPlugin';
 export * from './modify/StretchPlugin';
 export * from './modify/ArrayPlugin';
+export * from './modify/ExplodePlugin';
+export * from './block/BlockPlugin';
+export * from './block/InsertPlugin';
 
 /**
  * Initializes and registers the standard AutoCAD plugin suite onto the core
@@ -65,7 +71,11 @@ export function registerDefaultPlugins(core: CADCoreAPI): void {
   core.registerPlugin(new EllipsePlugin());
   core.registerPlugin(new HatchPlugin());
 
-  // Modify (Phase 1 & Phase 2)
+  // Blocks (Phase 3)
+  core.registerPlugin(new BlockPlugin());
+  core.registerPlugin(new InsertPlugin());
+
+  // Modify (Phase 1, 2 & 3)
   core.registerPlugin(new ErasePlugin());
   core.registerPlugin(new MovePlugin());
   core.registerPlugin(new CopyPlugin());
@@ -76,4 +86,5 @@ export function registerDefaultPlugins(core: CADCoreAPI): void {
   core.registerPlugin(new TrimExtendPlugin());
   core.registerPlugin(new StretchPlugin());
   core.registerPlugin(new ArrayPlugin());
+  core.registerPlugin(new ExplodePlugin());
 }

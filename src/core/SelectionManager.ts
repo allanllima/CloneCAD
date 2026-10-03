@@ -241,6 +241,15 @@ export class SelectionManager {
     } else if (ent.type === 'hatch') {
       const h = ent as any;
       return PolygonBooleanUtils.getBounds(h.boundary || []);
+    } else if (ent.type === 'insert') {
+      const ins = ent as any;
+      const size = 30 * Math.max(Math.abs(ins.scale?.x ?? 1), Math.abs(ins.scale?.y ?? 1));
+      return {
+        minX: ins.position.x - size,
+        maxX: ins.position.x + size,
+        minY: ins.position.y - size,
+        maxY: ins.position.y + size,
+      };
     }
     return null;
   }
@@ -336,6 +345,17 @@ export class SelectionManager {
         pt.x <= bounds.maxX + tol &&
         pt.y >= bounds.minY - tol &&
         pt.y <= bounds.maxY + tol
+      );
+    } else if (ent.type === 'insert') {
+      const ins = ent as any;
+      const bounds = this.getEntityBounds(ent);
+      if (!bounds) return false;
+      return (
+        (pt.x >= bounds.minX - tol &&
+          pt.x <= bounds.maxX + tol &&
+          pt.y >= bounds.minY - tol &&
+          pt.y <= bounds.maxY + tol) ||
+        Math.hypot(pt.x - ins.position.x, pt.y - ins.position.y) <= tol * 2
       );
     }
     return false;

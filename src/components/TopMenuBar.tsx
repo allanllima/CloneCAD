@@ -19,6 +19,8 @@ interface TopMenuBarProps {
   core: CADCore;
   onOpenLayers: () => void;
   onOpenArchitecture: () => void;
+  onOpenDesignCenter?: () => void;
+  onOpenCreateBlock?: () => void;
   onLoadSample: (sampleType: 'mechanical' | 'architectural') => void;
 }
 
@@ -26,6 +28,8 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   core,
   onOpenLayers,
   onOpenArchitecture,
+  onOpenDesignCenter,
+  onOpenCreateBlock,
   onLoadSample,
 }) => {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -487,12 +491,65 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               </button>
               <button
                 onClick={() => {
+                  core.setActiveTool('explode');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Explode</span> <span className="text-[#5c6370]">X</span>
+              </button>
+              <button
+                onClick={() => {
                   core.setActiveTool('erase');
                   setOpenMenu(null);
                 }}
                 className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
               >
                 <span>Erase</span> <span className="text-[#5c6370]">E</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* BLOCKS MENU */}
+        <div className="relative">
+          <button
+            onClick={() => setOpenMenu(openMenu === 'blocks' ? null : 'blocks')}
+            className={`px-2.5 py-1 rounded hover:bg-[#282c34] hover:text-white transition-colors ${
+              openMenu === 'blocks' ? 'bg-[#282c34] text-white' : ''
+            }`}
+          >
+            Blocks
+          </button>
+          {openMenu === 'blocks' && (
+            <div className="absolute left-0 top-full mt-1 w-52 bg-[#21252b] border border-[#3a3f4b] rounded shadow-2xl py-1 z-50 text-[12px]">
+              <button
+                onClick={() => {
+                  core.setActiveTool('insert');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Insert Block...</span> <span className="text-[#5c6370]">I</span>
+              </button>
+              <button
+                onClick={() => {
+                  setOpenMenu(null);
+                  if (onOpenCreateBlock) onOpenCreateBlock();
+                  else core.setActiveTool('block');
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Define Block...</span> <span className="text-[#5c6370]">B</span>
+              </button>
+              <button
+                onClick={() => {
+                  setOpenMenu(null);
+                  onOpenDesignCenter?.();
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#61afef]"
+              >
+                <span>Design Center Library</span> <span className="text-[#5c6370]">DC</span>
               </button>
             </div>
           )}

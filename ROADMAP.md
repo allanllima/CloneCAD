@@ -50,16 +50,16 @@ flowchart LR
 ## 📌 Fase 3: Sistema de Blocos, Atributos & Biblioteca de Símbolos
 > **Objetivo:** Permitir reutilização de componentes padronizados e modularidade de projetos.
 
-- [ ] **Definição e Inserção de Blocos (`BLOCK` / `INSERT`):**
+- [x] **Definição e Inserção de Blocos (`BLOCK` / `INSERT`):**
   - Armazenamento de definições de bloco no Core como subcenas instanciáveis.
   - Inserção com ponto base, escala ($X, Y$), ângulo de rotação e camada de destino.
-- [ ] **Grips de Edição Rápida:**
+- [x] **Grips de Edição Rápida:**
   - Manipulação interativa de entidades ao clicar em seus vértices/pontos-chave sem precisar chamar comandos de edição explícitos.
-- [ ] **Atributos de Bloco (`ATTDEF`):**
+- [x] **Atributos de Bloco (`ATTDEF`):**
   - Campos de texto variáveis vinculados ao bloco (ex: carimbo de folhas, numeração de portas/janelas, identificadores de circuito elétrico).
-- [ ] **Design Center / Biblioteca de Blocos:**
+- [x] **Design Center / Biblioteca de Blocos:**
   - Painel lateral com componentes categorizados para Engenharia Civil, Arquitetura, Elétrica e Mecânica com drag-and-drop direto na viewport.
-- [ ] **Explosão de Entidades (`EXPLODE`):**
+- [x] **Explosão de Entidades (`EXPLODE`):**
   - Decomposição de blocos, polilinhas e retângulos em suas primitivas básicas constituintes.
 
 ---
