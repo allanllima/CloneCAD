@@ -541,6 +541,12 @@ export interface CADCoreAPI {
   getSnapSettings(): SnapSettings;
   setSnapSettings(settings: Partial<SnapSettings>): void;
 
+  // Coordinate & Point Input (AutoCAD Polar, Cartesian, Direct Distance)
+  inputPoint(worldPoint: Point2D): void;
+  inputCoordinate(text: string, cursorPoint?: Point2D): boolean;
+  getActiveBasePoint(): Point2D | null;
+  getLastCursorWorld(): Point2D;
+
   // Ortho & Polar tracking
   isOrthoMode(): boolean;
   setOrthoMode(enabled: boolean): void;
@@ -690,4 +696,6 @@ export type CADCoreEvent =
   | 'perf:options_changed'
   | 'perf:open_modal'
   | 'perf:toggle_hud'
+  | 'point:entered'
+  | 'dynamicInput:toggle'
   | 'render:requested';

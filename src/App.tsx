@@ -95,6 +95,9 @@ export const App: React.FC = () => {
     const unsubPerfHUD = core.on('perf:toggle_hud', (val: boolean) => {
       setIsPerfHUDOpen(val);
     });
+    const unsubDyn = core.on('dynamicInput:toggle', () => {
+      setShowDynamicInput((prev) => !prev);
+    });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
@@ -121,6 +124,7 @@ export const App: React.FC = () => {
       unsubVcs();
       unsubPerfModal();
       unsubPerfHUD();
+      unsubDyn();
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [core]);

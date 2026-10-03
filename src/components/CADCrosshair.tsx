@@ -1,13 +1,24 @@
 import React from 'react';
 import { Point2D, SnapResult, SnapType } from '../core/types';
 
-interface CADCrosshairProps {
+export interface DynamicInputState {
+  active: boolean;
+  field: 'distance' | 'angle' | 'cartesianX' | 'cartesianY';
+  distVal: string;
+  angleVal: string;
+  xVal: string;
+  yVal: string;
+}
+
+export interface CADCrosshairProps {
   screenPos: Point2D;
   worldPos: Point2D;
+  basePoint?: Point2D | null;
   snap: SnapResult | null;
   snapScreenPos?: Point2D | null;
   activePrompt: string;
   showDynamicInput?: boolean;
+  dynInput?: DynamicInputState;
   viewportWidth: number;
   viewportHeight: number;
 }
@@ -155,10 +166,12 @@ const SnapMarkerGlyph: React.FC<{ type: SnapType }> = ({ type }) => {
 export const CADCrosshair: React.FC<CADCrosshairProps> = ({
   screenPos,
   worldPos,
+  basePoint,
   snap,
   snapScreenPos,
   activePrompt,
   showDynamicInput = true,
+  dynInput,
   viewportWidth,
   viewportHeight,
 }) => {
@@ -189,6 +202,18 @@ export const CADCrosshair: React.FC<CADCrosshairProps> = ({
     markerPos.y - 12 < 10
       ? markerPos.y + 16
       : markerPos.y - 12;
+
+  // Calculate live polar dimensions if base point is active
+  let liveDist = 0;
+  let liveAngleDeg = 0;
+  if (basePoint) {
+    const bdx = worldPos.x - basePoint.x;
+    const bdy = worldPos.y - basePoint.y;
+    liveDist = Math.hypot(bdx, bdy);
+    const liveAngleRad = Math.atan2(bdy, bdx);
+    liveAngleDeg = (liveAngleRad * 180) / Math.PI;
+    if (liveAngleDeg < 0) liveAngleDeg += 360;
+  }
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden z-20">
@@ -263,21 +288,99 @@ export const CADCrosshair: React.FC<CADCrosshairProps> = ({
         </>
       )}
 
-      {/* Dynamic Input (AutoCAD DYN Mode floating tooltip) */}
+      {/* Dynamic Input (AutoCAD DYN Mode floating polar & Cartesian inputs) */}
       {showDynamicInput && (
         <div
-          className="absolute z-20 flex flex-col gap-0.5 px-2 py-1 bg-[#1e2227]/90 border border-[#4b5263] text-white text-[11px] font-mono rounded shadow-lg pointer-events-none"
+          className="absolute z-30 flex flex-col gap-1 pointer-events-none transition-all duration-75"
           style={{
-            left: `${Math.min(screenPos.x + 18, viewportWidth - 140)}px`,
-            top: `${Math.min(screenPos.y + 18, viewportHeight - 60)}px`,
+            left: `${Math.min(screenPos.x + 20, viewportWidth - 250)}px`,
+            top: `${Math.min(screenPos.y + 20, viewportHeight - 80)}px`,
           }}
         >
-          <div className="flex gap-2">
-            <span className="text-[#61afef]">X: {worldPos.x.toFixed(2)}</span>
-            <span className="text-[#98c379]">Y: {worldPos.y.toFixed(2)}</span>
-          </div>
+          {basePoint ? (
+            /* Polar Dynamic Input */
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-[#14171d]/95 border border-[#3b4252] rounded shadow-2xl text-[11px] font-mono select-none">
+              {/* Length / Distance field */}
+              <div
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all ${
+                  dynInput?.active && dynInput.field === 'distance'
+                    ? 'border-[#61afef] bg-[#21252b] text-white ring-1 ring-[#61afef]'
+                    : 'border-transparent bg-[#1e2227] text-[#61afef]'
+                }`}
+              >
+                <span className="text-[10px] text-white/50">L:</span>
+                <span className="font-bold">
+                  {dynInput?.active && dynInput.distVal !== ''
+                    ? dynInput.distVal
+                    : liveDist.toFixed(2)}
+                </span>
+                {dynInput?.active && dynInput.distVal !== '' && dynInput.field !== 'distance' && (
+                  <span className="text-[10px] text-[#98c379]" title="Locked">🔒</span>
+                )}
+              </div>
+
+              {/* Angle symbol */}
+              <span className="text-white/60 font-bold text-xs">&lt;</span>
+
+              {/* Angle field */}
+              <div
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all ${
+                  dynInput?.active && dynInput.field === 'angle'
+                    ? 'border-[#e5c07b] bg-[#21252b] text-white ring-1 ring-[#e5c07b]'
+                    : 'border-transparent bg-[#1e2227] text-[#e5c07b]'
+                }`}
+              >
+                <span className="text-[10px] text-white/50">∡</span>
+                <span className="font-bold">
+                  {dynInput?.active && dynInput.angleVal !== ''
+                    ? `${dynInput.angleVal}°`
+                    : `${liveAngleDeg.toFixed(1)}°`}
+                </span>
+                {dynInput?.active && dynInput.angleVal !== '' && dynInput.field !== 'angle' && (
+                  <span className="text-[10px] text-[#98c379]" title="Locked">🔒</span>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Cartesian Dynamic Input */
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-[#14171d]/95 border border-[#3b4252] rounded shadow-2xl text-[11px] font-mono select-none">
+              <div
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all ${
+                  dynInput?.active && dynInput.field === 'cartesianX'
+                    ? 'border-[#61afef] bg-[#21252b] text-white ring-1 ring-[#61afef]'
+                    : 'border-transparent bg-[#1e2227] text-[#61afef]'
+                }`}
+              >
+                <span className="text-[10px] text-white/50">X:</span>
+                <span className="font-bold">
+                  {dynInput?.active && dynInput.xVal !== ''
+                    ? dynInput.xVal
+                    : worldPos.x.toFixed(2)}
+                </span>
+              </div>
+
+              <span className="text-white/40 font-bold">,</span>
+
+              <div
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded border transition-all ${
+                  dynInput?.active && dynInput.field === 'cartesianY'
+                    ? 'border-[#98c379] bg-[#21252b] text-white ring-1 ring-[#98c379]'
+                    : 'border-transparent bg-[#1e2227] text-[#98c379]'
+                }`}
+              >
+                <span className="text-[10px] text-white/50">Y:</span>
+                <span className="font-bold">
+                  {dynInput?.active && dynInput.yVal !== ''
+                    ? dynInput.yVal
+                    : worldPos.y.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Active Command Prompt / Help badge */}
           {activePrompt && activePrompt !== 'Command:' && (
-            <div className="text-[#e5c07b] text-[10px] max-w-[200px] truncate">
+            <div className="px-1.5 py-0.5 bg-[#1e2227]/90 border border-[#3b4252] text-[#abb2bf] text-[10px] font-mono rounded shadow max-w-[260px] truncate">
               {activePrompt}
             </div>
           )}

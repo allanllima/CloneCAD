@@ -18,6 +18,10 @@ export class CircleTool implements CADTool {
   private core: CADCoreAPI | null = null;
   private center: Point2D | null = null;
 
+  public getBasePoint(): Point2D | null {
+    return this.center ? { ...this.center } : null;
+  }
+
   public onActivate(core: CADCoreAPI): void {
     this.core = core;
     this.center = null;
@@ -25,7 +29,7 @@ export class CircleTool implements CADTool {
   }
 
   public onDeactivate(core: CADCoreAPI): void {
-    this.cancel();
+    this.center = null;
   }
 
   public onPointerDown(e: CADPointerEvent): void {

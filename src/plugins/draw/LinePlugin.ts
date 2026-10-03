@@ -18,6 +18,10 @@ export class LineTool implements CADTool {
   private core: CADCoreAPI | null = null;
   private startPoint: Point2D | null = null;
 
+  public getBasePoint(): Point2D | null {
+    return this.startPoint ? { ...this.startPoint } : null;
+  }
+
   public onActivate(core: CADCoreAPI): void {
     this.core = core;
     this.startPoint = null;

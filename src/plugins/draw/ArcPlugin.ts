@@ -18,6 +18,10 @@ export class ArcTool implements CADTool {
   private core: CADCoreAPI | null = null;
   private pts: Point2D[] = [];
 
+  public getBasePoint(): Point2D | null {
+    return this.pts.length > 0 ? { ...this.pts[this.pts.length - 1] } : null;
+  }
+
   public onActivate(core: CADCoreAPI): void {
     this.core = core;
     this.pts = [];

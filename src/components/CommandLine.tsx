@@ -68,16 +68,9 @@ export const CommandLine: React.FC<CommandLineProps> = ({
     const parts = cmdStr.split(/\s+/);
     const cmd = parts[0].toUpperCase();
 
-    // Check for coordinate entry (e.g., "100,50" or "100.5, 20.3")
-    if (cmdStr.includes(',')) {
-      const coords = cmdStr.split(',').map((s) => parseFloat(s.trim()));
-      if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
-        const screen = core.worldToScreen(coords[0], coords[1]);
-        const mouseEvt = new MouseEvent('mousedown', { clientX: screen.x, clientY: screen.y, button: 0 });
-        core.handlePointerDown(mouseEvt, screen.x, screen.y);
-        core.logCommandMessage(`Point entered: (${coords[0]}, ${coords[1]})`);
-        return;
-      }
+    // Check for coordinate entry: Polar (@dist<ang, dist<ang, #dist<ang), Cartesian (@x,y, #x,y, x,y), or Direct Distance (dist)
+    if (core.inputCoordinate(cmdStr)) {
+      return;
     }
 
     switch (cmd) {
@@ -503,7 +496,7 @@ export const CommandLine: React.FC<CommandLineProps> = ({
         core.logCommandMessage('  Precision: ORTHO (F8), POLAR (F10), OTRACK (F11), OSNAP (F3), GRID (F9)');
         core.logCommandMessage('  Navigation: PAN (P), ZOOM (Z E)');
         core.logCommandMessage('  Utility: DIST (DI), UNDO (U), REDO, SELECT (SEL), HELP');
-        core.logCommandMessage('  Coordinates: type X,Y (e.g. 50,100)');
+        core.logCommandMessage('  Coordinates: Polar: dist<ang or @dist<ang (e.g. 50<45, @100<30), Cartesian: X,Y or @X,Y, Direct Distance: dist (e.g. 100)');
         break;
 
       default:

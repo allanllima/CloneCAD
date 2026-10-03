@@ -18,6 +18,10 @@ export class RectangleTool implements CADTool {
   private core: CADCoreAPI | null = null;
   private firstCorner: Point2D | null = null;
 
+  public getBasePoint(): Point2D | null {
+    return this.firstCorner ? { ...this.firstCorner } : null;
+  }
+
   public onActivate(core: CADCoreAPI): void {
     this.core = core;
     this.firstCorner = null;

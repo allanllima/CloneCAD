@@ -20,6 +20,10 @@ export class CopyTool implements CADTool {
   private selectedEntities: CADEntity[] = [];
   private basePoint: Point2D | null = null;
 
+  public getBasePoint(): Point2D | null {
+    return this.basePoint ? { ...this.basePoint } : null;
+  }
+
   public onActivate(core: CADCoreAPI): void {
     this.core = core;
     this.selectedEntities = core.getSelectedEntities();

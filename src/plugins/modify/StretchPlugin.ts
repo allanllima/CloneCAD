@@ -23,6 +23,10 @@ export class StretchTool implements CADTool {
   private stretchEntities: CADEntity[] = [];
   private basePoint: Point2D | null = null;
 
+  public getBasePoint(): Point2D | null {
+    return this.basePoint ? { ...this.basePoint } : null;
+  }
+
   public onActivate(core: CADCoreAPI): void {
     this.core = core;
     this.step = 'select_window_start';

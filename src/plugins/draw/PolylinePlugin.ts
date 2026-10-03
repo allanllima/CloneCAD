@@ -18,6 +18,10 @@ export class PolylineTool implements CADTool {
   private core: CADCoreAPI | null = null;
   private points: Point2D[] = [];
 
+  public getBasePoint(): Point2D | null {
+    return this.points.length > 0 ? { ...this.points[this.points.length - 1] } : null;
+  }
+
   public onActivate(core: CADCoreAPI): void {
     this.core = core;
     this.points = [];

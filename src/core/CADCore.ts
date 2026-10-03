@@ -60,6 +60,7 @@ import { RasterImageManager } from './interop/RasterImageManager';
 import { ScriptEngine } from './scripting/ScriptEngine';
 import { CollaborationManager } from './collaboration/CollaborationManager';
 import { VersionControlManager } from './vcs/VersionControlManager';
+import { CoordinateParser } from './geometry/CoordinateParser';
 
 export class CADCore implements CADCoreAPI {
   // Subsystems
@@ -105,6 +106,11 @@ export class CADCore implements CADCoreAPI {
   // Middle-mouse panning state
   private isMiddlePanning = false;
   private lastMiddlePanScreen: Point2D = { x: 0, y: 0 };
+
+  // Point input & cursor state (for Polar/Cartesian input & Direct Distance Entry)
+  private lastInputPoint: Point2D | null = null;
+  private lastCursorWorld: Point2D = { x: 0, y: 0 };
+  private lastCursorScreen: Point2D = { x: 0, y: 0 };
 
   constructor(width = 800, height = 600) {
     this.eventBus = new EventBus();
@@ -233,7 +239,9 @@ export class CADCore implements CADCoreAPI {
 
   public setActiveTool(toolId: string | null): void {
     if (this.activeTool) {
-      this.activeTool.onDeactivate(this);
+      const prevTool = this.activeTool;
+      this.activeTool = null;
+      prevTool.onDeactivate(this);
       this.setPreviewEntity(null);
       this.setSelectionBox(null);
     }
@@ -525,6 +533,89 @@ export class CADCore implements CADCoreAPI {
     this.eventBus.emit('snap:changed', this.snapEngine.getSettings());
   }
 
+  // ---------------------------------------------------------------------------
+  // Point & Coordinate Input (AutoCAD Polar, Cartesian, Direct Distance)
+  // ---------------------------------------------------------------------------
+  public getActiveBasePoint(): Point2D | null {
+    if (this.activeTool) {
+      if (typeof (this.activeTool as any).getBasePoint === 'function') {
+        const bp = (this.activeTool as any).getBasePoint();
+        if (bp) return bp;
+      }
+      if ((this.activeTool as any).basePoint) {
+        return (this.activeTool as any).basePoint;
+      }
+      if ((this.activeTool as any).startPoint) {
+        return (this.activeTool as any).startPoint;
+      }
+      if ((this.activeTool as any).center) {
+        return (this.activeTool as any).center;
+      }
+      if ((this.activeTool as any).firstCorner) {
+        return (this.activeTool as any).firstCorner;
+      }
+      if (Array.isArray((this.activeTool as any).points) && (this.activeTool as any).points.length > 0) {
+        const pts = (this.activeTool as any).points;
+        return pts[pts.length - 1];
+      }
+      if (Array.isArray((this.activeTool as any).pts) && (this.activeTool as any).pts.length > 0) {
+        const pts = (this.activeTool as any).pts;
+        return pts[pts.length - 1];
+      }
+    }
+
+    if (this.gripManager.getActiveGrip()) {
+      return this.gripManager.getActiveGrip()!.position;
+    }
+
+    return this.lastInputPoint;
+  }
+
+  public getLastCursorWorld(): Point2D {
+    return { ...this.lastCursorWorld };
+  }
+
+  public inputPoint(worldPoint: Point2D): void {
+    this.lastInputPoint = { ...worldPoint };
+    const screen = this.worldToScreen(worldPoint);
+    const rawEvt =
+      typeof MouseEvent !== 'undefined'
+        ? new MouseEvent('mousedown', { clientX: screen.x, clientY: screen.y, button: 0 })
+        : ({ clientX: screen.x, clientY: screen.y, button: 0 } as any);
+
+    const event: CADPointerEvent = {
+      screen,
+      world: { ...worldPoint },
+      raw: rawEvt,
+      button: 0,
+      shiftKey: false,
+      ctrlKey: false,
+      altKey: false,
+    };
+    if (this.activeTool) {
+      this.activeTool.onPointerDown(event);
+    }
+    this.trackingEngine.acquirePoint(worldPoint);
+    this.eventBus.emit('point:entered', worldPoint);
+    this.requestRender();
+  }
+
+  public inputCoordinate(text: string, cursorPoint?: Point2D): boolean {
+    const raw = text.trim();
+    if (!raw) return false;
+
+    const basePoint = this.getActiveBasePoint();
+    const cursor = cursorPoint || this.lastCursorWorld;
+    const parsed = CoordinateParser.parse(raw, basePoint, cursor, this.orthoMode);
+    if (!parsed) return false;
+
+    this.inputPoint(parsed.point);
+    this.logCommandMessage(
+      `Point: (${parsed.point.x.toFixed(2)}, ${parsed.point.y.toFixed(2)}) [${parsed.description}]`
+    );
+    return true;
+  }
+
   public isOrthoMode(): boolean {
     return this.orthoMode;
   }
@@ -786,6 +877,7 @@ export class CADCore implements CADCoreAPI {
       }
     }
 
+    this.lastInputPoint = { ...event.world };
     if (this.activeTool) {
       this.activeTool.onPointerDown(event);
     }
@@ -801,6 +893,8 @@ export class CADCore implements CADCoreAPI {
     }
 
     const event = this.createCADPointerEvent(e, screenX, screenY);
+    this.lastCursorWorld = { ...event.world };
+    this.lastCursorScreen = { x: screenX, y: screenY };
     this.emit('cursor:moved', event.world);
     this.collabManager?.broadcastCursor(event.world, this.activeTool?.id);
 
@@ -864,6 +958,12 @@ export class CADCore implements CADCoreAPI {
     if (e.key === 'F11') {
       e.preventDefault();
       this.setOTrack(!this.isOTrack());
+      return;
+    }
+    // F12: Dynamic Input toggle
+    if (e.key === 'F12') {
+      e.preventDefault();
+      this.eventBus.emit('dynamicInput:toggle');
       return;
     }
     // Escape: Cancel active grip, active tool, or clear selection
