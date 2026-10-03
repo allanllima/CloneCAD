@@ -352,6 +352,27 @@ export const CommandLine: React.FC<CommandLineProps> = ({
         core.openRasterImageModal();
         break;
 
+      // Scripting, Collab & Version Control (Phase 7)
+      case 'SCR':
+      case 'SCRIPT':
+      case 'LISP':
+        core.openScriptEditorModal();
+        break;
+
+      case 'COLLAB':
+      case 'MULTIPLAYER':
+      case 'SHARE':
+        core.openCollaborationModal();
+        break;
+
+      case 'COMMIT':
+      case 'GIT':
+      case 'VCS':
+      case 'BRANCH':
+      case 'DIFF':
+        core.openVersionControlModal();
+        break;
+
       // Navigation & View
       case 'P':
       case 'PAN':

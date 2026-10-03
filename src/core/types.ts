@@ -300,6 +300,81 @@ export type CADEntity =
   | (BaseEntity & Record<string, any>);
 
 // -------------------------------------------------------------
+// Scripting Engine (Phase 7)
+// -------------------------------------------------------------
+export interface CADScript {
+  id: string;
+  name: string;
+  code: string;
+  language: 'javascript' | 'lisp';
+  description?: string;
+}
+
+export interface ScriptExecutionResult {
+  success: boolean;
+  result?: any;
+  output: string[];
+  error?: string;
+  executionTimeMs: number;
+}
+
+// -------------------------------------------------------------
+// Collaboration & Multi-User Awareness (Phase 7)
+// -------------------------------------------------------------
+export interface CADUserPresence {
+  id: string;
+  name: string;
+  color: string;
+  cursor?: Point2D;
+  activeTool?: string;
+  selectedIds?: string[];
+  lastActive: number;
+}
+
+export interface CADCollaborationMessage {
+  type: 'presence' | 'entity:create' | 'entity:update' | 'entity:delete' | 'layer:create' | 'cursor:move' | 'chat';
+  userId: string;
+  userName: string;
+  userColor: string;
+  payload: any;
+  timestamp: number;
+}
+
+// -------------------------------------------------------------
+// Version Control & Drawing Diff (Phase 7)
+// -------------------------------------------------------------
+export interface CADCommit {
+  id: string;
+  message: string;
+  author: string;
+  timestamp: number;
+  branch: string;
+  entities: CADEntity[];
+  layers: CADLayer[];
+  parentId?: string;
+}
+
+export interface CADBranch {
+  name: string;
+  headCommitId: string;
+}
+
+export type EntityDiffStatus = 'added' | 'deleted' | 'modified' | 'unchanged';
+
+export interface CADDiffResult {
+  added: CADEntity[];
+  deleted: CADEntity[];
+  modified: { before: CADEntity; after: CADEntity; changes: string[] }[];
+  unchanged: CADEntity[];
+  summary: {
+    addedCount: number;
+    deletedCount: number;
+    modifiedCount: number;
+    unchangedCount: number;
+  };
+}
+
+// -------------------------------------------------------------
 // Viewport & Coordinate System
 // -------------------------------------------------------------
 export interface ViewportState {
@@ -500,6 +575,31 @@ export interface CADCoreAPI {
   calibrateImageScale(imageId: string, p1: Point2D, p2: Point2D, realDistance: number): boolean;
   openDXFImportModal(): void;
   openRasterImageModal(): void;
+
+  // Scripting & Automation (Phase 7)
+  executeScript(code: string, language?: 'javascript' | 'lisp'): ScriptExecutionResult;
+  getScriptTemplates(): CADScript[];
+  openScriptEditorModal(): void;
+
+  // Real-Time Collaboration (Phase 7)
+  getCollaborationManager(): any;
+  joinCollaborationRoom(roomId: string, userName?: string): void;
+  leaveCollaborationRoom(): void;
+  getCollaborators(): CADUserPresence[];
+  openCollaborationModal(): void;
+
+  // Version Control & Git for CAD (Phase 7)
+  getVersionControlManager(): any;
+  commitDrawing(message: string, author?: string): CADCommit;
+  getCommits(): CADCommit[];
+  getBranches(): string[];
+  getCurrentBranch(): string;
+  createBranch(name: string): boolean;
+  checkoutBranch(name: string): boolean;
+  checkoutCommit(commitId: string): boolean;
+  diffCommits(commitIdA: string, commitIdB: string): CADDiffResult;
+  diffCurrentWithCommit(commitId: string): CADDiffResult;
+  openVersionControlModal(): void;
 }
 
 export type CADCoreEvent =
@@ -530,4 +630,14 @@ export type CADCoreEvent =
   | 'image:open_attach_modal'
   | 'dxf:imported'
   | 'dxf:exported'
+  | 'script:executed'
+  | 'script:open_editor'
+  | 'collab:user_joined'
+  | 'collab:user_left'
+  | 'collab:cursor_moved'
+  | 'collab:message'
+  | 'collab:open_modal'
+  | 'vcs:commit_created'
+  | 'vcs:branch_changed'
+  | 'vcs:open_modal'
   | 'render:requested';

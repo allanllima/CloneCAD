@@ -118,17 +118,25 @@ flowchart LR
 
 ---
 
-## 📌 Fase 7: Extensibilidade, APIs de Scripting & Colaboração em Nuvem
+## 📌 Fase 7: Extensibilidade, APIs de Scripting & Colaboração em Nuvem (Concluída ✅)
 > **Objetivo:** Habilitar automação de tarefas e edição simultânea multiusuário.
 
-- [ ] **Engine de Scripting (TypeScript / AutoLISP):**
-  - Console e editor para execução de rotinas automatizadas (ex: gerar eixos de pilares automaticamente, renomear 100 camadas em lote).
-  - API pública documentada para desenvolvedores criarem e compartilharem plugins de terceiros.
-- [ ] **Colaboração em Tempo Real (Multiplayer CAD):**
-  - Implementação de **CRDTs (Conflict-free Replicated Data Types)** via *Yjs* sobre WebSockets/WebRTC.
-  - Visualização de cursores remotos com cores individuais e sincronização de comandos sem locks de cena.
-- [ ] **Controle de Versão de Desenhos (Git para CAD):**
-  - Sistema de branches e histórico visual de commits com *Diff Visual* (realce em vermelho/verde do que foi adicionado/removido entre duas versões).
+- [x] **Engine de Scripting (JavaScript / TypeScript & AutoLISP):**
+  - Interpretador AutoLISP com suporte a S-expressions (`car`, `cdr`, `cons`, `setq`, `defun`, `command`, `if`, `while`, `repeat`, operações matemáticas).
+  - Executor JavaScript em sandbox seguro (`ScriptEngine.ts`) com injeção da API `cad` (`addLine`, `addCircle`, `addRect`, `zoomExtents`, `getEntities`, `setLayer`).
+  - Modelos de scripts pré-definidos para produtividade (Grid Estrutural, Espiral de Arquimedes, Alvo Concêntrico).
+  - Modal Dark UI (`ScriptEditorModal.tsx`) com editor de código, alternador de sintaxe, seleção de templates e console de execução em tempo real (`SCR`, `SCRIPT`, `LISP`).
+- [x] **Colaboração em Tempo Real (Multiplayer CAD):**
+  - Gerenciador de sincronização em rede local/P2P via `BroadcastChannel` com fallback extensível (`CollaborationManager.ts`).
+  - Presença multiusuário em tempo real com identificador de usuário, cor exclusiva e broadcasting de cursores na viewport.
+  - Sincronização automática de criação, atualização e deleção de entidades sem lock de viewport.
+  - Chat ao vivo integrado entre colaboradores.
+  - Modal Dark UI (`CollaborationModal.tsx`) para conexão, lista de colaboradores e chat em tempo real (`COLLAB`, `MULTIPLAYER`).
+- [x] **Controle de Versão de Desenhos (Git para CAD):**
+  - Gerenciador de controle de versão (`VersionControlManager.ts`) com histórico de commits, snapshots completos da cena e sistema de branches (`master`, branches de projeto).
+  - Checkout e rollback instantâneo para qualquer versão histórica do desenho.
+  - Motor de Diff Visual (`CADDiffEngine.ts`) que analisa e categoriza entidades em Added (Verde), Deleted (Vermelho), Modified (Amarelo) e Unchanged (Cinza), com detalhamento de propriedades alteradas.
+  - Modal Dark UI (`VersionControlModal.tsx`) com linha do tempo de commits, alternador de branches, criação de commit e resumo de diff (`COMMIT`, `GIT`, `VCS`, `BRANCH`, `DIFF`).
 
 ---
 

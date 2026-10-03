@@ -17,6 +17,9 @@ import { DataExtractionModal } from './components/DataExtractionModal';
 import { PlotModal } from './components/PlotModal';
 import { DXFImportModal } from './components/DXFImportModal';
 import { RasterImageModal } from './components/RasterImageModal';
+import { ScriptEditorModal } from './components/ScriptEditorModal';
+import { CollaborationModal } from './components/CollaborationModal';
+import { VersionControlModal } from './components/VersionControlModal';
 import { loadSampleDrawing } from './utils/sampleDrawings';
 import { BlockReferenceEntity } from './core/types';
 
@@ -39,6 +42,9 @@ export const App: React.FC = () => {
   const [isPlotModalOpen, setIsPlotModalOpen] = useState(false);
   const [isDXFImportOpen, setIsDXFImportOpen] = useState(false);
   const [isRasterImageOpen, setIsRasterImageOpen] = useState(false);
+  const [isScriptEditorOpen, setIsScriptEditorOpen] = useState(false);
+  const [isCollabOpen, setIsCollabOpen] = useState(false);
+  const [isVCSOpen, setIsVCSOpen] = useState(false);
   const [attributesModalEntity, setAttributesModalEntity] = useState<BlockReferenceEntity | null>(null);
   const [showDynamicInput, setShowDynamicInput] = useState(true);
 
@@ -70,6 +76,15 @@ export const App: React.FC = () => {
     const unsubRasterImg = core.on('image:open_attach_modal', () => {
       setIsRasterImageOpen(true);
     });
+    const unsubScript = core.on('script:open_editor', () => {
+      setIsScriptEditorOpen(true);
+    });
+    const unsubCollab = core.on('collab:open_modal', () => {
+      setIsCollabOpen(true);
+    });
+    const unsubVcs = core.on('vcs:open_modal', () => {
+      setIsVCSOpen(true);
+    });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
@@ -87,6 +102,9 @@ export const App: React.FC = () => {
       unsubPlot();
       unsubDxfImport();
       unsubRasterImg();
+      unsubScript();
+      unsubCollab();
+      unsubVcs();
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [core]);
@@ -213,6 +231,24 @@ export const App: React.FC = () => {
         core={core}
         isOpen={isRasterImageOpen}
         onClose={() => setIsRasterImageOpen(false)}
+      />
+
+      <ScriptEditorModal
+        core={core}
+        isOpen={isScriptEditorOpen}
+        onClose={() => setIsScriptEditorOpen(false)}
+      />
+
+      <CollaborationModal
+        core={core}
+        isOpen={isCollabOpen}
+        onClose={() => setIsCollabOpen(false)}
+      />
+
+      <VersionControlModal
+        core={core}
+        isOpen={isVCSOpen}
+        onClose={() => setIsVCSOpen(false)}
       />
     </div>
   );

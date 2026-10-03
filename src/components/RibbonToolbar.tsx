@@ -41,6 +41,8 @@ import {
   Image as ImageIcon,
   Upload,
   Download,
+  Terminal,
+  Users,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
@@ -597,24 +599,51 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
         </span>
       </div>
 
-      {/* 5. MEASURE / UTILITY */}
+      {/* 5. MEASURE / UTILITY / SCRIPT / COLLAB */}
       <div className="flex flex-col items-center border-r border-[#3a3f4b] pr-2 justify-between">
         <div className="flex items-center gap-1">
           <button
             onClick={() => selectTool('measure')}
             title="Measure Distance (DI)"
-            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[46px] ${
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
               activeToolId === 'measure'
                 ? 'bg-[#007acc] text-white shadow-sm'
                 : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
             }`}
           >
-            <Ruler size={18} />
-            <span className="text-[10px] mt-0.5 font-medium">Measure</span>
+            <Ruler size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Measure</span>
+          </button>
+
+          <button
+            onClick={() => core.openScriptEditorModal()}
+            title="Script Editor & AutoLISP (SCR)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] hover:bg-[#282c34] text-[#61afef] hover:text-white"
+          >
+            <Terminal size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Script</span>
+          </button>
+
+          <button
+            onClick={() => core.openCollaborationModal()}
+            title="Real-Time Collaboration (COLLAB)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] hover:bg-[#282c34] text-[#98c379] hover:text-white"
+          >
+            <Users size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Collab</span>
+          </button>
+
+          <button
+            onClick={() => core.openVersionControlModal()}
+            title="Drawing History & Git Diff (VCS)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] hover:bg-[#282c34] text-[#c678dd] hover:text-white"
+          >
+            <GitCommit size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Git Diff</span>
           </button>
         </div>
         <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
-          Utility
+          Utility & Automation
         </span>
       </div>
 

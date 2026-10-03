@@ -741,6 +741,34 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               >
                 Layer Properties...
               </button>
+              <div className="border-t border-[#3a3f4b] my-1" />
+              <button
+                onClick={() => {
+                  core.openScriptEditorModal();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#61afef]"
+              >
+                <span>Script Editor (JS/LISP)...</span> <span className="text-[#5c6370]">SCR</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.openCollaborationModal();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#98c379]"
+              >
+                <span>Multiplayer Collaboration...</span> <span className="text-[#5c6370]">COLLAB</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.openVersionControlModal();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#c678dd]"
+              >
+                <span>Revision History (Git)...</span> <span className="text-[#5c6370]">VCS</span>
+              </button>
             </div>
           )}
         </div>

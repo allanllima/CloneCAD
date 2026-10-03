@@ -24,6 +24,11 @@ import {
   TextEntity,
   EllipseEntity,
   SplineEntity,
+  CADScript,
+  ScriptExecutionResult,
+  CADUserPresence,
+  CADCommit,
+  CADDiffResult,
 } from './types';
 import { Viewport } from './Viewport';
 import { HistoryManager } from './HistoryManager';
@@ -49,6 +54,9 @@ import { ModifyEntityCommand } from '../commands/ModifyEntityCommand';
 import { DXFParser } from './interop/DXFParser';
 import { DXFSerializer } from './interop/DXFSerializer';
 import { RasterImageManager } from './interop/RasterImageManager';
+import { ScriptEngine } from './scripting/ScriptEngine';
+import { CollaborationManager } from './collaboration/CollaborationManager';
+import { VersionControlManager } from './vcs/VersionControlManager';
 
 export class CADCore implements CADCoreAPI {
   // Subsystems
@@ -64,6 +72,9 @@ export class CADCore implements CADCoreAPI {
   private layoutManager: LayoutManager;
   private plotStyleManager: PlotStyleManager;
   private pdfPlotter: PDFPlotter;
+  private scriptEngine: ScriptEngine;
+  private collabManager: CollaborationManager;
+  private vcsManager: VersionControlManager;
   private eventBus: EventBus;
   private renderer: CADRenderer | null = null;
 
@@ -97,6 +108,9 @@ export class CADCore implements CADCoreAPI {
       this.requestRender();
     });
     this.pdfPlotter = new PDFPlotter(this.layoutManager, this.plotStyleManager);
+    this.scriptEngine = new ScriptEngine(this);
+    this.collabManager = new CollaborationManager(this);
+    this.vcsManager = new VersionControlManager(this);
 
     this.layers = new LayerManager(() => {
       this.eventBus.emit('layer:changed');
@@ -292,6 +306,7 @@ export class CADCore implements CADCoreAPI {
       this.selectEntities([entity.id], false);
     }
     this.eventBus.emit('entity:added', entity);
+    this.collabManager?.broadcastEntityCreate(entity);
     this.requestRender();
   }
 
@@ -302,6 +317,7 @@ export class CADCore implements CADCoreAPI {
       this.selection.unindexEntity(id);
       this.selection.deselect([id]);
       this.eventBus.emit('entity:removed', id);
+      this.collabManager?.broadcastEntityDelete(id);
       this.requestRender();
     }
   }
@@ -322,6 +338,7 @@ export class CADCore implements CADCoreAPI {
       this.entities.set(entity.id, { ...entity });
       this.selection.indexEntity(entity);
       this.eventBus.emit('entity:updated', entity);
+      this.collabManager?.broadcastEntityUpdate(entity);
       this.requestRender();
     }
   }
@@ -753,6 +770,7 @@ export class CADCore implements CADCoreAPI {
 
     const event = this.createCADPointerEvent(e, screenX, screenY);
     this.emit('cursor:moved', event.world);
+    this.collabManager?.broadcastCursor(event.world, this.activeTool?.id);
 
     // Grip stretch real-time preview
     if (this.gripManager.getActiveGrip()) {
@@ -1221,5 +1239,92 @@ export class CADCore implements CADCoreAPI {
 
   public openRasterImageModal(): void {
     this.eventBus.emit('image:open_attach_modal');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Scripting & Automation (Phase 7)
+  // ---------------------------------------------------------------------------
+  public executeScript(code: string, language: 'javascript' | 'lisp' = 'javascript'): ScriptExecutionResult {
+    const res = this.scriptEngine.execute(code, language);
+    this.eventBus.emit('script:executed', res);
+    return res;
+  }
+
+  public getScriptTemplates(): CADScript[] {
+    return this.scriptEngine.getTemplates();
+  }
+
+  public openScriptEditorModal(): void {
+    this.eventBus.emit('script:open_editor');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Real-Time Collaboration (Phase 7)
+  // ---------------------------------------------------------------------------
+  public getCollaborationManager(): CollaborationManager {
+    return this.collabManager;
+  }
+
+  public joinCollaborationRoom(roomId: string, userName?: string): void {
+    this.collabManager.joinRoom(roomId, userName);
+  }
+
+  public leaveCollaborationRoom(): void {
+    this.collabManager.leaveRoom();
+  }
+
+  public getCollaborators(): CADUserPresence[] {
+    return this.collabManager.getCollaborators();
+  }
+
+  public openCollaborationModal(): void {
+    this.eventBus.emit('collab:open_modal');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Version Control & Drawing Diff (Phase 7)
+  // ---------------------------------------------------------------------------
+  public getVersionControlManager(): VersionControlManager {
+    return this.vcsManager;
+  }
+
+  public commitDrawing(message: string, author?: string): CADCommit {
+    return this.vcsManager.commit(message, author);
+  }
+
+  public getCommits(): CADCommit[] {
+    return this.vcsManager.getCommits();
+  }
+
+  public getBranches(): string[] {
+    return this.vcsManager.getBranches();
+  }
+
+  public getCurrentBranch(): string {
+    return this.vcsManager.getCurrentBranch();
+  }
+
+  public createBranch(name: string): boolean {
+    return this.vcsManager.createBranch(name);
+  }
+
+  public checkoutBranch(name: string): boolean {
+    return this.vcsManager.checkoutBranch(name);
+  }
+
+  public checkoutCommit(commitId: string): boolean {
+    return this.vcsManager.checkoutCommit(commitId);
+  }
+
+  public diffCommits(commitIdA: string, commitIdB: string): CADDiffResult {
+    return this.vcsManager.diffCommits(commitIdA, commitIdB);
+  }
+
+  public diffCurrentWithCommit(commitId: string): CADDiffResult {
+    return this.vcsManager.diffCurrentWithCommit(commitId);
+  }
+
+  public openVersionControlModal(): void {
+    this.eventBus.emit('vcs:open_modal');
   }
 }
