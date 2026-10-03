@@ -185,6 +185,39 @@ export class GripManager {
         });
         break;
       }
+
+      case 'dimension': {
+        const dim = ent as any;
+        if (dim.defPoint1) {
+          grips.push({ id: `${id}_def1`, entityId: id, position: { ...dim.defPoint1 }, type: 'endpoint' });
+        }
+        if (dim.defPoint2) {
+          grips.push({ id: `${id}_def2`, entityId: id, position: { ...dim.defPoint2 }, type: 'endpoint' });
+        }
+        if (dim.dimLinePoint) {
+          grips.push({ id: `${id}_dimline`, entityId: id, position: { ...dim.dimLinePoint }, type: 'midpoint' });
+        }
+        if (dim.chordPoint) {
+          grips.push({ id: `${id}_chord`, entityId: id, position: { ...dim.chordPoint }, type: 'endpoint' });
+        }
+        if (dim.centerPoint) {
+          grips.push({ id: `${id}_center`, entityId: id, position: { ...dim.centerPoint }, type: 'center' });
+        }
+        break;
+      }
+
+      case 'multileader': {
+        const ml = ent as any;
+        grips.push({ id: `${id}_arrow`, entityId: id, position: { ...ml.arrowPoint }, type: 'endpoint' });
+        grips.push({ id: `${id}_landing`, entityId: id, position: { ...ml.landingPoint }, type: 'midpoint' });
+        grips.push({
+          id: `${id}_shelf`,
+          entityId: id,
+          position: { x: ml.landingPoint.x + (ml.doglegLength || 8) * (ml.landingDirection || 1), y: ml.landingPoint.y },
+          type: 'endpoint',
+        });
+        break;
+      }
     }
 
     return grips;
@@ -312,6 +345,52 @@ export class GripManager {
       case 'text': {
         const txt = updated as TextEntity;
         txt.position = { ...newPos };
+        break;
+      }
+
+      case 'dimension': {
+        const dim = updated as any;
+        if (grip.id.endsWith('_def1')) {
+          dim.defPoint1 = { ...newPos };
+        } else if (grip.id.endsWith('_def2')) {
+          dim.defPoint2 = { ...newPos };
+        } else if (grip.id.endsWith('_dimline')) {
+          dim.dimLinePoint = { ...newPos };
+        } else if (grip.id.endsWith('_chord')) {
+          dim.chordPoint = { ...newPos };
+        } else if (grip.id.endsWith('_center')) {
+          dim.centerPoint = { ...newPos };
+        }
+        // Recalculate measurement
+        if (dim.dimType === 'linear' && dim.defPoint1 && dim.defPoint2) {
+          if (dim.linearOrientation === 'horizontal') {
+            dim.measurement = Math.abs(dim.defPoint2.x - dim.defPoint1.x);
+          } else if (dim.linearOrientation === 'vertical') {
+            dim.measurement = Math.abs(dim.defPoint2.y - dim.defPoint1.y);
+          } else {
+            dim.measurement = Math.hypot(dim.defPoint2.x - dim.defPoint1.x, dim.defPoint2.y - dim.defPoint1.y);
+          }
+        } else if (dim.dimType === 'aligned' && dim.defPoint1 && dim.defPoint2) {
+          dim.measurement = Math.hypot(dim.defPoint2.x - dim.defPoint1.x, dim.defPoint2.y - dim.defPoint1.y);
+        } else if (dim.dimType === 'radial' && dim.centerPoint && dim.chordPoint) {
+          dim.measurement = Math.hypot(dim.chordPoint.x - dim.centerPoint.x, dim.chordPoint.y - dim.centerPoint.y);
+        } else if (dim.dimType === 'diameter' && dim.centerPoint && dim.chordPoint) {
+          dim.measurement = 2 * Math.hypot(dim.chordPoint.x - dim.centerPoint.x, dim.chordPoint.y - dim.centerPoint.y);
+        }
+        break;
+      }
+
+      case 'multileader': {
+        const ml = updated as any;
+        if (grip.id.endsWith('_arrow')) {
+          ml.arrowPoint = { ...newPos };
+        } else if (grip.id.endsWith('_landing')) {
+          ml.landingPoint = { ...newPos };
+        } else if (grip.id.endsWith('_shelf')) {
+          const dx = newPos.x - ml.landingPoint.x;
+          ml.landingDirection = dx >= 0 ? 1 : -1;
+          ml.doglegLength = Math.max(3, Math.abs(dx));
+        }
         break;
       }
     }

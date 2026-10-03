@@ -517,6 +517,98 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ core, isOpen, 
                     )}
                 </>
               )}
+
+              {/* Dimension Section */}
+              {entity.type === 'dimension' && (
+                <>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Dim Type</span>
+                    <span className="text-white font-mono uppercase font-semibold">
+                      {(entity as any).dimType}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Measured</span>
+                    <span className="text-[#e5c07b] font-mono font-bold">
+                      {(entity as any).measurement?.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Dim Style</span>
+                    <select
+                      value={(entity as any).dimStyleId || core.getActiveDimStyle().id}
+                      onChange={(e) => handleUpdate({ dimStyleId: e.target.value } as any)}
+                      className="w-28 bg-[#181a1f] border border-[#3a3f4b] text-white px-1.5 py-0.5 rounded outline-none"
+                    >
+                      {core.getDimStyles().map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex flex-col py-1 gap-1">
+                    <span className="text-[#abb2bf]">Text Override</span>
+                    <input
+                      type="text"
+                      placeholder="Leave empty or use <>"
+                      value={(entity as any).textOverride || ''}
+                      onChange={(e) => handleUpdate({ textOverride: e.target.value } as any)}
+                      className="bg-[#181a1f] border border-[#3a3f4b] text-[#e5e9f0] font-mono px-2 py-0.5 rounded outline-none text-[11px]"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Multileader Section */}
+              {entity.type === 'multileader' && (
+                <>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Type</span>
+                    <select
+                      value={(entity as any).contentStyle || 'text'}
+                      onChange={(e) => handleUpdate({ contentStyle: e.target.value } as any)}
+                      className="w-28 bg-[#181a1f] border border-[#3a3f4b] text-white px-1.5 py-0.5 rounded outline-none"
+                    >
+                      <option value="text">Annotation Text</option>
+                      <option value="balloon">Numbered Balloon</option>
+                    </select>
+                  </div>
+                  {(entity as any).contentStyle === 'balloon' ? (
+                    <div className="flex justify-between items-center py-0.5">
+                      <span className="text-[#abb2bf]">Balloon Item</span>
+                      <input
+                        type="text"
+                        value={(entity as any).balloonNumber || ''}
+                        onChange={(e) => handleUpdate({ balloonNumber: e.target.value } as any)}
+                        className="w-20 bg-[#181a1f] border border-[#3a3f4b] text-[#e5c07b] font-mono px-1.5 py-0.5 rounded text-right outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col py-1 gap-1">
+                      <span className="text-[#abb2bf]">Note Content</span>
+                      <input
+                        type="text"
+                        value={(entity as any).text || ''}
+                        onChange={(e) => handleUpdate({ text: e.target.value } as any)}
+                        className="bg-[#181a1f] border border-[#3a3f4b] text-[#e5e9f0] font-mono px-2 py-0.5 rounded outline-none text-[11px]"
+                      />
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-[#abb2bf]">Arrowhead</span>
+                    <select
+                      value={(entity as any).arrowType || 'arrow'}
+                      onChange={(e) => handleUpdate({ arrowType: e.target.value } as any)}
+                      className="w-28 bg-[#181a1f] border border-[#3a3f4b] text-white px-1.5 py-0.5 rounded outline-none"
+                    >
+                      <option value="arrow">Filled Arrow</option>
+                      <option value="dot">Dot Marker</option>
+                      <option value="tick">Architectural Tick</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

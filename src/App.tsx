@@ -12,6 +12,8 @@ import { ArchitectureModal } from './components/ArchitectureModal';
 import { DesignCenterModal } from './components/DesignCenterModal';
 import { BlockCreationModal } from './components/BlockCreationModal';
 import { BlockAttributesModal } from './components/BlockAttributesModal';
+import { DimStyleModal } from './components/DimStyleModal';
+import { DataExtractionModal } from './components/DataExtractionModal';
 import { loadSampleDrawing } from './utils/sampleDrawings';
 import { BlockReferenceEntity } from './core/types';
 
@@ -29,6 +31,8 @@ export const App: React.FC = () => {
   const [isArchOpen, setIsArchOpen] = useState(false);
   const [isDesignCenterOpen, setIsDesignCenterOpen] = useState(false);
   const [isBlockCreateOpen, setIsBlockCreateOpen] = useState(false);
+  const [isDimStyleOpen, setIsDimStyleOpen] = useState(false);
+  const [isDataExtractionOpen, setIsDataExtractionOpen] = useState(false);
   const [attributesModalEntity, setAttributesModalEntity] = useState<BlockReferenceEntity | null>(null);
   const [showDynamicInput, setShowDynamicInput] = useState(true);
 
@@ -37,7 +41,7 @@ export const App: React.FC = () => {
     loadSampleDrawing(core, 'architectural');
   }, [core]);
 
-  // Hook block event modal triggers
+  // Hook block and dimension event modal triggers
   useEffect(() => {
     const unsubCreate = core.on('block:open_create_modal', () => {
       setIsBlockCreateOpen(true);
@@ -45,9 +49,17 @@ export const App: React.FC = () => {
     const unsubAttrs = core.on('block:open_attributes_modal', (ent: BlockReferenceEntity) => {
       setAttributesModalEntity(ent);
     });
+    const unsubDimStyle = core.on('dimstyle:open_modal', () => {
+      setIsDimStyleOpen(true);
+    });
+    const unsubDataExt = core.on('data_extraction:open_modal', () => {
+      setIsDataExtractionOpen(true);
+    });
     return () => {
       unsubCreate();
       unsubAttrs();
+      unsubDimStyle();
+      unsubDataExt();
     };
   }, [core]);
 
@@ -60,6 +72,8 @@ export const App: React.FC = () => {
         onOpenArchitecture={() => setIsArchOpen(true)}
         onOpenDesignCenter={() => setIsDesignCenterOpen(true)}
         onOpenCreateBlock={() => setIsBlockCreateOpen(true)}
+        onOpenDimStyle={() => setIsDimStyleOpen(true)}
+        onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
         onLoadSample={(type) => loadSampleDrawing(core, type)}
       />
 
@@ -69,6 +83,8 @@ export const App: React.FC = () => {
         onOpenLayers={() => setIsLayersOpen(true)}
         onOpenDesignCenter={() => setIsDesignCenterOpen(true)}
         onOpenCreateBlock={() => setIsBlockCreateOpen(true)}
+        onOpenDimStyle={() => setIsDimStyleOpen(true)}
+        onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
       />
 
       {/* 3. Central Canvas & Dockable Side Panels */}
@@ -88,6 +104,8 @@ export const App: React.FC = () => {
         core={core}
         onOpenDesignCenter={() => setIsDesignCenterOpen(true)}
         onOpenCreateBlock={() => setIsBlockCreateOpen(true)}
+        onOpenDimStyle={() => setIsDimStyleOpen(true)}
+        onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
       />
 
       {/* 5. AutoCAD Status Bar */}
@@ -130,6 +148,18 @@ export const App: React.FC = () => {
         isOpen={!!attributesModalEntity}
         onClose={() => setAttributesModalEntity(null)}
         entity={attributesModalEntity}
+      />
+
+      <DimStyleModal
+        core={core}
+        isOpen={isDimStyleOpen}
+        onClose={() => setIsDimStyleOpen(false)}
+      />
+
+      <DataExtractionModal
+        core={core}
+        isOpen={isDataExtractionOpen}
+        onClose={() => setIsDataExtractionOpen(false)}
       />
     </div>
   );

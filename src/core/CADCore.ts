@@ -13,6 +13,7 @@ import {
   ViewportState,
   CADBlockDefinition,
   CADGrip,
+  CADDimStyle,
 } from './types';
 import { Viewport } from './Viewport';
 import { HistoryManager } from './HistoryManager';
@@ -24,6 +25,7 @@ import { CADRenderer } from './Renderer';
 import { TrackingEngine, TrackingRay } from './TrackingEngine';
 import { BlockManager } from './BlockManager';
 import { GripManager } from './GripManager';
+import { DimStyleManager } from './DimStyleManager';
 import { ModifyEntityCommand } from '../commands/ModifyEntityCommand';
 
 export class CADCore implements CADCoreAPI {
@@ -36,6 +38,7 @@ export class CADCore implements CADCoreAPI {
   private trackingEngine: TrackingEngine;
   private blockManager: BlockManager;
   private gripManager: GripManager;
+  private dimStyleManager: DimStyleManager;
   private eventBus: EventBus;
   private renderer: CADRenderer | null = null;
 
@@ -62,6 +65,7 @@ export class CADCore implements CADCoreAPI {
     this.trackingEngine = new TrackingEngine();
     this.blockManager = new BlockManager(() => this.eventBus.emit('block:registered'));
     this.gripManager = new GripManager();
+    this.dimStyleManager = new DimStyleManager();
 
     this.layers = new LayerManager(() => {
       this.eventBus.emit('layer:changed');
@@ -93,6 +97,9 @@ export class CADCore implements CADCoreAPI {
     }
     this.renderer = new CADRenderer(container, this.viewport);
     this.renderer.setBlockResolver((name) => this.blockManager.getBlock(name));
+    this.renderer.setDimStyleResolver((id) =>
+      id ? (this.dimStyleManager.getStyle(id) || this.dimStyleManager.getActiveStyle()) : this.dimStyleManager.getActiveStyle()
+    );
     this.requestRender();
   }
 
@@ -495,6 +502,48 @@ export class CADCore implements CADCoreAPI {
 
   public getBlockManager(): BlockManager {
     return this.blockManager;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dimension Styles Subsystem
+  // ---------------------------------------------------------------------------
+  public getDimStyles(): CADDimStyle[] {
+    return this.dimStyleManager.getStyles();
+  }
+
+  public getActiveDimStyle(): CADDimStyle {
+    return this.dimStyleManager.getActiveStyle();
+  }
+
+  public setActiveDimStyle(id: string): void {
+    this.dimStyleManager.setActiveStyle(id);
+    this.eventBus.emit('dimstyle:changed', this.dimStyleManager.getActiveStyle());
+    this.requestRender();
+  }
+
+  public addDimStyle(style: CADDimStyle): void {
+    this.dimStyleManager.addStyle(style);
+    this.eventBus.emit('dimstyle:changed', this.dimStyleManager.getActiveStyle());
+    this.logCommandMessage(`Dimension Style "${style.name}" created.`);
+  }
+
+  public updateDimStyle(id: string, changes: Partial<CADDimStyle>): void {
+    this.dimStyleManager.updateStyle(id, changes);
+    this.eventBus.emit('dimstyle:changed', this.dimStyleManager.getActiveStyle());
+    this.requestRender();
+  }
+
+  public deleteDimStyle(id: string): boolean {
+    const ok = this.dimStyleManager.deleteStyle(id);
+    if (ok) {
+      this.eventBus.emit('dimstyle:changed', this.dimStyleManager.getActiveStyle());
+      this.requestRender();
+    }
+    return ok;
+  }
+
+  public getDimStyleManager(): DimStyleManager {
+    return this.dimStyleManager;
   }
 
   // ---------------------------------------------------------------------------

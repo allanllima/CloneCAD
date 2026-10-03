@@ -250,6 +250,37 @@ export class SelectionManager {
         minY: ins.position.y - size,
         maxY: ins.position.y + size,
       };
+    } else if (ent.type === 'dimension') {
+      const d = ent as any;
+      const pts: Point2D[] = [d.defPoint1, d.defPoint2, d.dimLinePoint].filter(Boolean);
+      if (d.centerPoint) pts.push(d.centerPoint);
+      if (d.chordPoint) pts.push(d.chordPoint);
+      if (d.vertexPoint) pts.push(d.vertexPoint);
+      if (d.featureLocation) pts.push(d.featureLocation);
+      if (d.leaderEndPoint) pts.push(d.leaderEndPoint);
+      if (pts.length === 0) return null;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of pts) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      return { minX: minX - 5, maxX: maxX + 5, minY: minY - 5, maxY: maxY + 5 };
+    } else if (ent.type === 'multileader') {
+      const ml = ent as any;
+      const p1 = ml.arrowPoint;
+      const p2 = ml.landingPoint;
+      const p3 = { x: p2.x + (ml.doglegLength || 8) * (ml.landingDirection || 1), y: p2.y };
+      const pts = [p1, p2, p3];
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of pts) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      return { minX: minX - 5, maxX: maxX + 15, minY: minY - 5, maxY: maxY + 5 };
     }
     return null;
   }
@@ -357,6 +388,31 @@ export class SelectionManager {
           pt.y <= bounds.maxY + tol) ||
         Math.hypot(pt.x - ins.position.x, pt.y - ins.position.y) <= tol * 2
       );
+    } else if (ent.type === 'dimension') {
+      const d = ent as any;
+      const pts: Point2D[] = [d.defPoint1, d.defPoint2, d.dimLinePoint].filter(Boolean);
+      for (const p of pts) {
+        if (Math.hypot(pt.x - p.x, pt.y - p.y) <= tol * 1.5) return true;
+      }
+      if (d.defPoint1 && d.dimLinePoint) {
+        if (this.distancePointToSegment(pt, d.defPoint1, d.dimLinePoint) <= tol) return true;
+      }
+      if (d.defPoint2 && d.dimLinePoint) {
+        if (this.distancePointToSegment(pt, d.defPoint2, d.dimLinePoint) <= tol) return true;
+      }
+      const b = this.getEntityBounds(ent);
+      if (b && pt.x >= b.minX && pt.x <= b.maxX && pt.y >= b.minY && pt.y <= b.maxY) {
+        return true;
+      }
+    } else if (ent.type === 'multileader') {
+      const ml = ent as any;
+      const p1 = ml.arrowPoint;
+      const p2 = ml.landingPoint;
+      const p3 = { x: p2.x + (ml.doglegLength || 8) * (ml.landingDirection || 1), y: p2.y };
+      if (this.distancePointToSegment(pt, p1, p2) <= tol * 1.5) return true;
+      if (this.distancePointToSegment(pt, p2, p3) <= tol * 1.5) return true;
+      if (Math.hypot(pt.x - p1.x, pt.y - p1.y) <= tol * 2) return true;
+      if (Math.hypot(pt.x - p3.x, pt.y - p3.y) <= tol * 2) return true;
     }
     return false;
   }

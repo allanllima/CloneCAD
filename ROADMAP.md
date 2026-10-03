@@ -67,18 +67,18 @@ flowchart LR
 ## 📌 Fase 4: Dimensionamento, Anotações Técnicas & Normas (ABNT / ISO)
 > **Objetivo:** Geração de documentação técnica pronta para fabricação e construção.
 
-- [ ] **Tipos de Cotas (Dimension Tools):**
+- [x] **Tipos de Cotas (Dimension Tools):**
   - **Linear & Alinhada:** Medição horizontal, vertical e paralela ao objeto.
   - **Angular:** Ângulo entre duas linhas concorrentes.
   - **Radial & Diametral:** Marcação de raio e diâmetro com símbolo $\varnothing$ e linha de chamada.
   - **Comprimento de Arco & Coordenadas Ordenadas:** Medições técnicas específicas.
-- [ ] **Gerenciador de Estilos de Cota (`DIMSTYLE`):**
+- [x] **Gerenciador de Estilos de Cota (`DIMSTYLE`):**
   - Configuração de pontas de seta (seta fechada, traço arquitetônico, ponto).
   - Supressão de linhas de cota/extensão, altura do texto e unidades primárias (mm, cm, m, polegadas fracionárias).
   - Tolerâncias dimensionais e limites superior/inferior.
-- [ ] **Multileaders (Linhas de Chamada Múltiplas):**
+- [x] **Multileaders (Linhas de Chamada Múltiplas):**
   - Apontadores com texto explicativo ou balões numerados para detalhamento de peças.
-- [ ] **Extração de Dados (`DATAEXTRACTION`):**
+- [x] **Extração de Dados (`DATAEXTRACTION`):**
   - Exportação de quantitativos (comprimentos de tubos, áreas de cômodos, contagem de blocos) para arquivos `.CSV` e `.JSON`.
 
 ---

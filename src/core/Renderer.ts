@@ -13,6 +13,9 @@ import {
   RectangleEntity,
   ArcEntity,
   EllipseEntity,
+  DimensionEntity,
+  MultileaderEntity,
+  CADDimStyle,
 } from './types';
 import { Viewport } from './Viewport';
 import { BulgeUtils } from './geometry/BulgeUtils';
@@ -39,6 +42,7 @@ export class CADRenderer {
   private gripsGroup: THREE.Group;
 
   private blockResolver?: (name: string) => CADBlockDefinition | undefined;
+  private dimStyleResolver?: (id?: string) => CADDimStyle;
 
   // Render loop flag
   private animationFrameId: number | null = null;
@@ -469,6 +473,10 @@ export class CADRenderer {
     this.blockResolver = resolver;
   }
 
+  public setDimStyleResolver(resolver: (id?: string) => CADDimStyle): void {
+    this.dimStyleResolver = resolver;
+  }
+
   public renderGrips(grips: CADGrip[] | null, activeGripId?: string | null): void {
     this.clearGroup(this.gripsGroup);
     if (!grips || grips.length === 0) {
@@ -802,6 +810,16 @@ export class CADRenderer {
         return group;
       }
 
+      case 'dimension': {
+        const dim = ent as DimensionEntity;
+        return this.buildDimensionObject(dim, material);
+      }
+
+      case 'multileader': {
+        const ml = ent as MultileaderEntity;
+        return this.buildMultileaderObject(ml, material);
+      }
+
       default:
         return null;
     }
@@ -831,6 +849,22 @@ export class CADRenderer {
     } else if (copy.type === 'hatch') {
       const h = copy as any;
       h.boundary = h.boundary.map((p: Point2D) => ({ x: p.x + dx, y: p.y + dy }));
+    } else if (copy.type === 'dimension') {
+      const d = copy as DimensionEntity;
+      if (d.defPoint1) { d.defPoint1.x += dx; d.defPoint1.y += dy; }
+      if (d.defPoint2) { d.defPoint2.x += dx; d.defPoint2.y += dy; }
+      if (d.dimLinePoint) { d.dimLinePoint.x += dx; d.dimLinePoint.y += dy; }
+      if (d.centerPoint) { d.centerPoint.x += dx; d.centerPoint.y += dy; }
+      if (d.chordPoint) { d.chordPoint.x += dx; d.chordPoint.y += dy; }
+      if (d.vertexPoint) { d.vertexPoint.x += dx; d.vertexPoint.y += dy; }
+      if (d.arcPoint) { d.arcPoint.x += dx; d.arcPoint.y += dy; }
+      if (d.featureLocation) { d.featureLocation.x += dx; d.featureLocation.y += dy; }
+      if (d.leaderEndPoint) { d.leaderEndPoint.x += dx; d.leaderEndPoint.y += dy; }
+      if (d.textPosition) { d.textPosition.x += dx; d.textPosition.y += dy; }
+    } else if (copy.type === 'multileader') {
+      const ml = copy as MultileaderEntity;
+      if (ml.arrowPoint) { ml.arrowPoint.x += dx; ml.arrowPoint.y += dy; }
+      if (ml.landingPoint) { ml.landingPoint.x += dx; ml.landingPoint.y += dy; }
     }
     return copy;
   }
@@ -904,6 +938,392 @@ export class CADRenderer {
     geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     const gripMat = new THREE.LineBasicMaterial({ color: 0x007acc, linewidth: 2 });
     return new THREE.LineSegments(geom, gripMat);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dimension & Annotation Builders
+  // ---------------------------------------------------------------------------
+  private buildDimensionObject(dim: DimensionEntity, defaultMaterial: THREE.Material): THREE.Object3D | null {
+    const group = new THREE.Group();
+    const style: CADDimStyle = (this.dimStyleResolver ? this.dimStyleResolver(dim.dimStyleId) : undefined) || {
+      id: 'default',
+      name: 'Default',
+      arrowType: 'arrow',
+      arrowSize: 2.5,
+      textHeight: 2.5,
+      textOffset: 1.0,
+      extensionLineExtension: 1.25,
+      extensionLineOffset: 0.625,
+      unit: 'mm',
+      precision: 2,
+      scaleFactor: 1.0,
+      prefix: '',
+      suffix: '',
+      decimalSeparator: '.',
+    };
+
+    const colorHex = this.parseColorToHex(dim.color || '#abb2bf');
+    const dimMat = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 1.5 });
+
+    // Format text
+    let displayText = dim.textOverride || '';
+    if (!displayText) {
+      const factor = style.scaleFactor || 1;
+      const precision = Math.max(0, Math.min(4, style.precision ?? 2));
+      const val = (dim.measurement * factor).toFixed(precision);
+      const numStr = style.decimalSeparator === ',' ? val.replace('.', ',') : val;
+      let pfx = style.prefix || '';
+      let sfx = style.suffix || '';
+      if (dim.dimType === 'diameter') pfx = `Ø ${pfx}`;
+      else if (dim.dimType === 'radial') pfx = `R ${pfx}`;
+      else if (dim.dimType === 'angular') sfx = `°${sfx}`;
+      else if (dim.dimType === 'arc_length') pfx = `⌒ ${pfx}`;
+      displayText = `${pfx}${numStr}${sfx}`;
+    }
+
+    const linePositions: number[] = [];
+    const arrowMeshGroup = new THREE.Group();
+
+    if (dim.dimType === 'linear' || dim.dimType === 'aligned') {
+      const p1 = dim.defPoint1;
+      const p2 = dim.defPoint2;
+      const pd = dim.dimLinePoint;
+      const ext = style.extensionLineExtension || 1.25;
+      const off = style.extensionLineOffset || 0.625;
+
+      if (dim.linearOrientation === 'horizontal') {
+        const y = pd.y;
+        const sign1 = y >= p1.y ? 1 : -1;
+        const sign2 = y >= p2.y ? 1 : -1;
+
+        // Ext line 1
+        if (!style.suppressExtLine1) {
+          linePositions.push(p1.x, p1.y + sign1 * off, 5, p1.x, y + sign1 * ext, 5);
+        }
+        // Ext line 2
+        if (!style.suppressExtLine2) {
+          linePositions.push(p2.x, p2.y + sign2 * off, 5, p2.x, y + sign2 * ext, 5);
+        }
+        // Dim line
+        linePositions.push(p1.x, y, 5, p2.x, y, 5);
+
+        // Arrows
+        arrowMeshGroup.add(this.buildArrowhead({ x: p1.x, y }, { x: 1, y: 0 }, style, colorHex));
+        arrowMeshGroup.add(this.buildArrowhead({ x: p2.x, y }, { x: -1, y: 0 }, style, colorHex));
+
+        // Text
+        const textPos = dim.textPosition || { x: (p1.x + p2.x) / 2, y: y + (style.textOffset || 1) };
+        const textSprite = this.buildTextSprite({
+          text: displayText,
+          position: textPos,
+          fontSize: style.textHeight * 3 || 8,
+          color: dim.color || '#e5e9f0',
+        });
+        group.add(textSprite);
+      } else if (dim.linearOrientation === 'vertical') {
+        const x = pd.x;
+        const sign1 = x >= p1.x ? 1 : -1;
+        const sign2 = x >= p2.x ? 1 : -1;
+
+        // Ext line 1
+        if (!style.suppressExtLine1) {
+          linePositions.push(p1.x + sign1 * off, p1.y, 5, x + sign1 * ext, p1.y, 5);
+        }
+        // Ext line 2
+        if (!style.suppressExtLine2) {
+          linePositions.push(p2.x + sign2 * off, p2.y, 5, x + sign2 * ext, p2.y, 5);
+        }
+        // Dim line
+        linePositions.push(x, p1.y, 5, x, p2.y, 5);
+
+        // Arrows
+        arrowMeshGroup.add(this.buildArrowhead({ x, y: p1.y }, { x: 0, y: 1 }, style, colorHex));
+        arrowMeshGroup.add(this.buildArrowhead({ x, y: p2.y }, { x: 0, y: -1 }, style, colorHex));
+
+        // Text
+        const textPos = dim.textPosition || { x: x + (style.textOffset || 1), y: (p1.y + p2.y) / 2 };
+        const textSprite = this.buildTextSprite({
+          text: displayText,
+          position: textPos,
+          fontSize: style.textHeight * 3 || 8,
+          color: dim.color || '#e5e9f0',
+        });
+        group.add(textSprite);
+      } else {
+        // Aligned
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const ux = dx / len;
+        const uy = dy / len;
+        const nx = -uy;
+        const ny = ux;
+
+        const wx = pd.x - p1.x;
+        const wy = pd.y - p1.y;
+        const h = wx * nx + wy * ny;
+        const sign = h >= 0 ? 1 : -1;
+
+        const d1x = p1.x + h * nx;
+        const d1y = p1.y + h * ny;
+        const d2x = p2.x + h * nx;
+        const d2y = p2.y + h * ny;
+
+        if (!style.suppressExtLine1) {
+          linePositions.push(p1.x + sign * off * nx, p1.y + sign * off * ny, 5, d1x + sign * ext * nx, d1y + sign * ext * ny, 5);
+        }
+        if (!style.suppressExtLine2) {
+          linePositions.push(p2.x + sign * off * nx, p2.y + sign * off * ny, 5, d2x + sign * ext * nx, d2y + sign * ext * ny, 5);
+        }
+        linePositions.push(d1x, d1y, 5, d2x, d2y, 5);
+
+        arrowMeshGroup.add(this.buildArrowhead({ x: d1x, y: d1y }, { x: ux, y: uy }, style, colorHex));
+        arrowMeshGroup.add(this.buildArrowhead({ x: d2x, y: d2y }, { x: -ux, y: -uy }, style, colorHex));
+
+        const textPos = dim.textPosition || {
+          x: (d1x + d2x) / 2 + sign * (style.textOffset || 1) * nx,
+          y: (d1y + d2y) / 2 + sign * (style.textOffset || 1) * ny,
+        };
+        const textSprite = this.buildTextSprite({
+          text: displayText,
+          position: textPos,
+          fontSize: style.textHeight * 3 || 8,
+          color: dim.color || '#e5e9f0',
+        });
+        group.add(textSprite);
+      }
+    } else if (dim.dimType === 'radial') {
+      const c = dim.centerPoint || { x: 0, y: 0 };
+      const chord = dim.chordPoint || dim.dimLinePoint;
+      const dx = chord.x - c.x;
+      const dy = chord.y - c.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+
+      linePositions.push(c.x, c.y, 5, chord.x, chord.y, 5);
+      arrowMeshGroup.add(this.buildArrowhead(chord, { x: -ux, y: -uy }, style, colorHex));
+
+      const textPos = dim.textPosition || { x: (c.x + chord.x) / 2, y: (c.y + chord.y) / 2 + 2 };
+      const textSprite = this.buildTextSprite({
+        text: displayText,
+        position: textPos,
+        fontSize: style.textHeight * 3 || 8,
+        color: dim.color || '#e5e9f0',
+      });
+      group.add(textSprite);
+    } else if (dim.dimType === 'diameter') {
+      const c = dim.centerPoint || { x: 0, y: 0 };
+      const p1 = dim.chordPoint || dim.dimLinePoint;
+      const p2 = { x: 2 * c.x - p1.x, y: 2 * c.y - p1.y };
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+
+      linePositions.push(p1.x, p1.y, 5, p2.x, p2.y, 5);
+      arrowMeshGroup.add(this.buildArrowhead(p1, { x: ux, y: uy }, style, colorHex));
+      arrowMeshGroup.add(this.buildArrowhead(p2, { x: -ux, y: -uy }, style, colorHex));
+
+      const textPos = dim.textPosition || { x: c.x, y: c.y + 2 };
+      const textSprite = this.buildTextSprite({
+        text: displayText,
+        position: textPos,
+        fontSize: style.textHeight * 3 || 8,
+        color: dim.color || '#e5e9f0',
+      });
+      group.add(textSprite);
+    } else if (dim.dimType === 'angular') {
+      const v = dim.vertexPoint || { x: 0, y: 0 };
+      const p1 = dim.line1End || { x: v.x + 20, y: v.y };
+      const p2 = dim.line2End || { x: v.x, y: v.y + 20 };
+      const r = Math.hypot(dim.dimLinePoint.x - v.x, dim.dimLinePoint.y - v.y) || 20;
+
+      let a1 = Math.atan2(p1.y - v.y, p1.x - v.x);
+      let a2 = Math.atan2(p2.y - v.y, p2.x - v.x);
+      if (a2 < a1) a2 += Math.PI * 2;
+
+      const segs = 32;
+      const arcPts: Point2D[] = [];
+      for (let i = 0; i <= segs; i++) {
+        const theta = a1 + (i / segs) * (a2 - a1);
+        arcPts.push({ x: v.x + Math.cos(theta) * r, y: v.y + Math.sin(theta) * r });
+      }
+      for (let i = 0; i < arcPts.length - 1; i++) {
+        linePositions.push(arcPts[i].x, arcPts[i].y, 5, arcPts[i + 1].x, arcPts[i + 1].y, 5);
+      }
+
+      // Arrows at both ends of arc
+      const t1 = { x: -Math.sin(a1), y: Math.cos(a1) };
+      const t2 = { x: Math.sin(a2), y: -Math.cos(a2) };
+      arrowMeshGroup.add(this.buildArrowhead(arcPts[0], t1, style, colorHex));
+      arrowMeshGroup.add(this.buildArrowhead(arcPts[arcPts.length - 1], t2, style, colorHex));
+
+      const midA = (a1 + a2) / 2;
+      const textPos = dim.textPosition || { x: v.x + Math.cos(midA) * (r + 4), y: v.y + Math.sin(midA) * (r + 4) };
+      const textSprite = this.buildTextSprite({
+        text: displayText,
+        position: textPos,
+        fontSize: style.textHeight * 3 || 8,
+        color: dim.color || '#e5e9f0',
+      });
+      group.add(textSprite);
+    } else if (dim.dimType === 'ordinate') {
+      const p = dim.featureLocation || dim.defPoint1;
+      const end = dim.leaderEndPoint || dim.dimLinePoint;
+      linePositions.push(p.x, p.y, 5, end.x, p.y, 5, end.x, p.y, 5, end.x, end.y, 5);
+
+      const textPos = dim.textPosition || { x: end.x + 2, y: end.y };
+      const textSprite = this.buildTextSprite({
+        text: displayText,
+        position: textPos,
+        fontSize: style.textHeight * 3 || 8,
+        color: dim.color || '#e5e9f0',
+      });
+      group.add(textSprite);
+    }
+
+    if (linePositions.length > 0) {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+      group.add(new THREE.LineSegments(geom, dimMat));
+    }
+    group.add(arrowMeshGroup);
+
+    return group;
+  }
+
+  private buildMultileaderObject(ml: MultileaderEntity, defaultMaterial: THREE.Material): THREE.Object3D | null {
+    const group = new THREE.Group();
+    const colorHex = this.parseColorToHex(ml.color || '#61afef');
+    const lineMat = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 1.5 });
+
+    const pArrow = ml.arrowPoint;
+    const pLanding = ml.landingPoint;
+    const dogleg = ml.doglegLength || 8;
+    const dir = ml.landingDirection || 1;
+    const pShelfEnd = { x: pLanding.x + dogleg * dir, y: pLanding.y };
+
+    const positions: number[] = [
+      pArrow.x, pArrow.y, 5, pLanding.x, pLanding.y, 5,
+      pLanding.x, pLanding.y, 5, pShelfEnd.x, pShelfEnd.y, 5,
+    ];
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    group.add(new THREE.LineSegments(geom, lineMat));
+
+    // Arrowhead at pArrow pointing back from pLanding
+    const dx = pLanding.x - pArrow.x;
+    const dy = pLanding.y - pArrow.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const u = { x: dx / len, y: dy / len };
+    const dummyStyle: CADDimStyle = {
+      id: 'ml_style',
+      name: 'ml',
+      arrowType: ml.arrowType || 'arrow',
+      arrowSize: 2.5,
+      textHeight: 2.5,
+      textOffset: 1,
+      extensionLineExtension: 1,
+      extensionLineOffset: 0.5,
+      unit: 'mm',
+      precision: 2,
+      scaleFactor: 1,
+    };
+    group.add(this.buildArrowhead(pArrow, u, dummyStyle, colorHex));
+
+    if (ml.contentStyle === 'balloon') {
+      const balloonRadius = 5;
+      const bCenter = { x: pShelfEnd.x + (balloonRadius + 1) * dir, y: pShelfEnd.y };
+      const circlePts: number[] = [];
+      const segs = 32;
+      for (let i = 0; i <= segs; i++) {
+        const theta = (i / segs) * Math.PI * 2;
+        circlePts.push(bCenter.x + Math.cos(theta) * balloonRadius, bCenter.y + Math.sin(theta) * balloonRadius, 5);
+      }
+      const circleGeom = new THREE.BufferGeometry();
+      circleGeom.setAttribute('position', new THREE.Float32BufferAttribute(circlePts, 3));
+      group.add(new THREE.Line(circleGeom, lineMat));
+
+      const numSprite = this.buildTextSprite({
+        text: ml.balloonNumber || '1',
+        position: { x: bCenter.x - 2, y: bCenter.y + 2 },
+        fontSize: 10,
+        color: ml.color || '#e5e9f0',
+      });
+      group.add(numSprite);
+    } else {
+      const textSprite = this.buildTextSprite({
+        text: ml.text || '',
+        position: { x: pShelfEnd.x + 2 * dir, y: pShelfEnd.y + 1 },
+        fontSize: ml.textHeight ? ml.textHeight * 3 : 10,
+        color: ml.color || '#e5e9f0',
+      });
+      group.add(textSprite);
+    }
+
+    return group;
+  }
+
+  private buildArrowhead(
+    tip: Point2D,
+    direction: Point2D,
+    style: CADDimStyle,
+    colorHex: number
+  ): THREE.Object3D {
+    const size = style.arrowSize || 2.5;
+
+    if (style.arrowType === 'tick') {
+      const tickAngle = Math.PI / 4;
+      const half = size / 2;
+      const dx = Math.cos(tickAngle) * half;
+      const dy = Math.sin(tickAngle) * half;
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute([tip.x - dx, tip.y - dy, 6, tip.x + dx, tip.y + dy, 6], 3)
+      );
+      const mat = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 2 });
+      return new THREE.Line(geom, mat);
+    }
+
+    if (style.arrowType === 'dot') {
+      const dotRadius = size / 3;
+      const pts: number[] = [];
+      for (let i = 0; i <= 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        pts.push(tip.x + Math.cos(a) * dotRadius, tip.y + Math.sin(a) * dotRadius, 6);
+      }
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+      const mat = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 2 });
+      return new THREE.Line(geom, mat);
+    }
+
+    // Default filled triangular arrowhead
+    const ux = direction.x;
+    const uy = direction.y;
+    const baseCenterX = tip.x + ux * size;
+    const baseCenterY = tip.y + uy * size;
+    const nx = -uy * (size / 3);
+    const ny = ux * (size / 3);
+
+    const w1x = baseCenterX + nx;
+    const w1y = baseCenterY + ny;
+    const w2x = baseCenterX - nx;
+    const w2y = baseCenterY - ny;
+
+    const vertices = new Float32Array([
+      tip.x, tip.y, 6,
+      w1x, w1y, 6,
+      w2x, w2y, 6,
+    ]);
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    const mat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide });
+    return new THREE.Mesh(geom, mat);
   }
 
   // ---------------------------------------------------------------------------

@@ -170,6 +170,96 @@ export interface BlockReferenceEntity extends BaseEntity {
   attributeValues: Record<string, string>;
 }
 
+// -------------------------------------------------------------
+// Dimensioning & Technical Annotations (ABNT / ISO)
+// -------------------------------------------------------------
+export type DimensionType =
+  | 'linear'
+  | 'aligned'
+  | 'angular'
+  | 'radial'
+  | 'diameter'
+  | 'arc_length'
+  | 'ordinate';
+
+export interface CADDimStyle {
+  id: string;
+  name: string;
+  arrowType: 'arrow' | 'tick' | 'dot' | 'open';
+  arrowSize: number; // e.g. 2.5
+  textHeight: number; // e.g. 2.5
+  textOffset: number; // gap between text and dim line (e.g. 1.0)
+  extensionLineExtension: number; // overshoot past dim line (dimexe, e.g. 1.25)
+  extensionLineOffset: number; // offset from measured origin (dimexo, e.g. 0.625)
+  suppressExtLine1?: boolean;
+  suppressExtLine2?: boolean;
+  suppressDimLine1?: boolean;
+  suppressDimLine2?: boolean;
+  unit: 'mm' | 'cm' | 'm' | 'in' | 'ft';
+  precision: number; // 0, 1, 2, 3, 4 decimal places
+  scaleFactor: number; // linear multiplier, default 1.0
+  prefix?: string;
+  suffix?: string;
+  decimalSeparator?: '.' | ',';
+  toleranceEnabled?: boolean;
+  toleranceUpper?: number;
+  toleranceLower?: number;
+}
+
+export interface DimensionEntity extends BaseEntity {
+  type: 'dimension';
+  dimType: DimensionType;
+  dimStyleId?: string;
+
+  // Linear & Aligned
+  defPoint1: Point2D; // 1st extension line origin
+  defPoint2: Point2D; // 2nd extension line origin
+  dimLinePoint: Point2D; // location of the dimension line / text
+  linearOrientation?: 'horizontal' | 'vertical' | 'aligned';
+
+  // Radial / Diameter
+  centerPoint?: Point2D;
+  chordPoint?: Point2D; // Point on circle/arc circumference
+
+  // Angular
+  vertexPoint?: Point2D;
+  line1Start?: Point2D;
+  line1End?: Point2D;
+  line2Start?: Point2D;
+  line2End?: Point2D;
+  arcPoint?: Point2D;
+
+  // Ordinate
+  featureLocation?: Point2D;
+  leaderEndPoint?: Point2D;
+  ordinateAxis?: 'X' | 'Y';
+  datumOrigin?: Point2D;
+
+  // Arc Length
+  arcCenter?: Point2D;
+  arcRadius?: number;
+  startAngle?: number;
+  endAngle?: number;
+
+  // Values & Customizations
+  measurement: number;
+  textOverride?: string;
+  textPosition?: Point2D;
+}
+
+export interface MultileaderEntity extends BaseEntity {
+  type: 'multileader';
+  arrowPoint: Point2D; // Target point (arrowhead)
+  landingPoint: Point2D; // Shoulder / elbow point
+  doglegLength: number; // Horizontal landing line length (e.g. 10)
+  landingDirection: 1 | -1; // 1 = right, -1 = left
+  text: string; // Explanatory text annotation
+  contentStyle: 'text' | 'balloon'; // Plain note or circled bubble
+  balloonNumber?: string;
+  arrowType?: 'arrow' | 'dot' | 'tick';
+  textHeight?: number;
+}
+
 export interface CADGrip {
   id: string;
   entityId: string;
@@ -189,6 +279,8 @@ export type CADEntity =
   | EllipseEntity
   | HatchEntity
   | BlockReferenceEntity
+  | DimensionEntity
+  | MultileaderEntity
   | (BaseEntity & Record<string, any>);
 
 // -------------------------------------------------------------
@@ -339,6 +431,14 @@ export interface CADCoreAPI {
   getBlockDefinitions(): CADBlockDefinition[];
   hasBlockDefinition(name: string): boolean;
 
+  // Dimension Styles
+  getDimStyles(): CADDimStyle[];
+  getActiveDimStyle(): CADDimStyle;
+  setActiveDimStyle(id: string): void;
+  addDimStyle(style: CADDimStyle): void;
+  updateDimStyle(id: string, changes: Partial<CADDimStyle>): void;
+  deleteDimStyle(id: string): boolean;
+
   // Grip Management
   getActiveGrip(): CADGrip | null;
   setActiveGrip(grip: CADGrip | null): void;
@@ -375,6 +475,9 @@ export type CADCoreEvent =
   | 'block:registered'
   | 'block:open_create_modal'
   | 'block:open_attributes_modal'
+  | 'dimstyle:changed'
+  | 'dimstyle:open_modal'
+  | 'data_extraction:open_modal'
   | 'grip:changed'
   | 'cursor:moved'
   | 'render:requested';

@@ -24,6 +24,8 @@ import { ArrayPlugin } from './modify/ArrayPlugin';
 import { ExplodePlugin } from './modify/ExplodePlugin';
 import { BlockPlugin } from './block/BlockPlugin';
 import { InsertPlugin } from './block/InsertPlugin';
+import { DimensionPlugin } from './dimension/DimensionPlugin';
+import { MultileaderPlugin } from './dimension/MultileaderPlugin';
 
 export * from './utility/SelectPlugin';
 export * from './utility/PanPlugin';
@@ -50,6 +52,8 @@ export * from './modify/ArrayPlugin';
 export * from './modify/ExplodePlugin';
 export * from './block/BlockPlugin';
 export * from './block/InsertPlugin';
+export * from './dimension/DimensionPlugin';
+export * from './dimension/MultileaderPlugin';
 
 /**
  * Initializes and registers the standard AutoCAD plugin suite onto the core
@@ -74,6 +78,10 @@ export function registerDefaultPlugins(core: CADCoreAPI): void {
   // Blocks (Phase 3)
   core.registerPlugin(new BlockPlugin());
   core.registerPlugin(new InsertPlugin());
+
+  // Annotations & Dimensions (Phase 4)
+  core.registerPlugin(new DimensionPlugin());
+  core.registerPlugin(new MultileaderPlugin());
 
   // Modify (Phase 1, 2 & 3)
   core.registerPlugin(new ErasePlugin());

@@ -5,9 +5,17 @@ interface CommandLineProps {
   core: CADCore;
   onOpenDesignCenter?: () => void;
   onOpenCreateBlock?: () => void;
+  onOpenDimStyle?: () => void;
+  onOpenDataExtraction?: () => void;
 }
 
-export const CommandLine: React.FC<CommandLineProps> = ({ core, onOpenDesignCenter, onOpenCreateBlock }) => {
+export const CommandLine: React.FC<CommandLineProps> = ({
+  core,
+  onOpenDesignCenter,
+  onOpenCreateBlock,
+  onOpenDimStyle,
+  onOpenDataExtraction,
+}) => {
   const [history, setHistory] = useState<string[]>([
     'CloneCAD Modular Engine [Version 2.0.26]',
     '(c) 2026 CloneCAD Architecture. All rights reserved.',
@@ -226,6 +234,63 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core, onOpenDesignCent
         }
         break;
 
+      // Dimension commands (Phase 4)
+      case 'DLI':
+      case 'DIMLIN':
+      case 'DIMLINEAR':
+        core.setActiveTool('dimlinear');
+        break;
+
+      case 'DAL':
+      case 'DIMALIGNED':
+        core.setActiveTool('dimaligned');
+        break;
+
+      case 'DRA':
+      case 'DIMRAD':
+      case 'DIMRADIUS':
+        core.setActiveTool('dimradius');
+        break;
+
+      case 'DDI':
+      case 'DIMDIAM':
+      case 'DIMDIAMETER':
+        core.setActiveTool('dimdiameter');
+        break;
+
+      case 'DAN':
+      case 'DIMANG':
+      case 'DIMANGULAR':
+        core.setActiveTool('dimangular');
+        break;
+
+      case 'DOR':
+      case 'DIMORD':
+      case 'DIMORDINATE':
+        core.setActiveTool('dimordinate');
+        break;
+
+      case 'ML':
+      case 'MLEADER':
+      case 'LEADER':
+        core.setActiveTool('mleader');
+        break;
+
+      case 'D':
+      case 'DST':
+      case 'DIMSTYLE':
+        if (onOpenDimStyle) onOpenDimStyle();
+        else core.emit('dimstyle:open_modal');
+        break;
+
+      case 'DX':
+      case 'DATAEXTRACTION':
+      case 'BCOUNT':
+      case 'QUANT':
+        if (onOpenDataExtraction) onOpenDataExtraction();
+        else core.emit('data_extraction:open_modal');
+        break;
+
       // Navigation & View
       case 'P':
       case 'PAN':
@@ -307,6 +372,7 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core, onOpenDesignCent
         core.logCommandMessage('  Draw: LINE (L), PLINE (PL), CIRCLE (C), RECTANGLE (REC), ARC (A), SPLINE (SPL), ELLIPSE (EL), HATCH (H), TEXT (T)');
         core.logCommandMessage('  Modify: ERASE (E), MOVE (M), COPY (CO), ROTATE (RO), MIRROR (MI), OFFSET (O), FILLET (F), CHAMFER (CHA), TRIM (TR), EXTEND (EX), STRETCH (S), ARRAY (AR), EXPLODE (X)');
         core.logCommandMessage('  Blocks: BLOCK (B), INSERT (I), DESIGNCENTER (DC), ATTEDIT');
+        core.logCommandMessage('  Dimensions: DIMLINEAR (DLI), DIMALIGNED (DAL), DIMRADIUS (DRA), DIMDIAMETER (DDI), DIMANGULAR (DAN), DIMORDINATE (DOR), MLEADER (ML), DIMSTYLE (D), DATAEXTRACTION (DX / BCOUNT)');
         core.logCommandMessage('  Precision: ORTHO (F8), POLAR (F10), OTRACK (F11), OSNAP (F3), GRID (F9)');
         core.logCommandMessage('  Navigation: PAN (P), ZOOM (Z E)');
         core.logCommandMessage('  Utility: DIST (DI), UNDO (U), REDO, SELECT (SEL), HELP');

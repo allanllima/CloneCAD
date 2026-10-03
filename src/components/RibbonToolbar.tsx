@@ -33,6 +33,9 @@ import {
   FolderPlus,
   Library,
   Sparkles,
+  Table,
+  Sliders,
+  GitCommit,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
@@ -40,6 +43,8 @@ interface RibbonToolbarProps {
   onOpenLayers: () => void;
   onOpenDesignCenter?: () => void;
   onOpenCreateBlock?: () => void;
+  onOpenDimStyle?: () => void;
+  onOpenDataExtraction?: () => void;
 }
 
 export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
@@ -47,6 +52,8 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   onOpenLayers,
   onOpenDesignCenter,
   onOpenCreateBlock,
+  onOpenDimStyle,
+  onOpenDataExtraction,
 }) => {
   const [activeToolId, setActiveToolId] = useState<string | null>(core.getActiveTool()?.id || 'select');
   const [layers, setLayers] = useState<CADLayer[]>(core.getLayers());
@@ -466,7 +473,111 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
         </span>
       </div>
 
-      {/* 4. ANNOTATION / MEASURE */}
+      {/* 4. ANNOTATION / DIMENSIONS PANEL */}
+      <div className="flex flex-col items-center border-r border-[#3a3f4b] pr-2 justify-between">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => selectTool('dimlinear')}
+            title="Linear Dimension (DLI)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] ${
+              activeToolId === 'dimlinear'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Ruler size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Linear</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('dimaligned')}
+            title="Aligned Dimension (DAL)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] ${
+              activeToolId === 'dimaligned'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <ArrowLeftRight size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Aligned</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('dimradius')}
+            title="Radius Dimension (DRA)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] ${
+              activeToolId === 'dimradius'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <CircleDashed size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Radius</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('dimdiameter')}
+            title="Diameter Dimension (DDI)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] ${
+              activeToolId === 'dimdiameter'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Circle size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Diam</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('dimangular')}
+            title="Angular Dimension (DAN)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] ${
+              activeToolId === 'dimangular'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <CornerUpRight size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Angular</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('mleader')}
+            title="Multileader Annotation (ML / MLEADER)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] ${
+              activeToolId === 'mleader'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <GitCommit size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Leader</span>
+          </button>
+
+          <button
+            onClick={() => onOpenDimStyle?.()}
+            title="Dimension Styles Manager (DIMSTYLE / D)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] hover:bg-[#282c34] text-[#61afef] hover:text-white"
+          >
+            <Sliders size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Style</span>
+          </button>
+
+          <button
+            onClick={() => onOpenDataExtraction?.()}
+            title="Data Extraction & BOM Quantitativos (DATAEXTRACTION)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[38px] hover:bg-[#282c34] text-[#98c379] hover:text-white"
+          >
+            <Table size={17} />
+            <span className="text-[9px] mt-0.5 font-medium">Quant</span>
+          </button>
+        </div>
+        <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
+          Dimensions & Annotate
+        </span>
+      </div>
+
+      {/* 5. MEASURE / UTILITY */}
       <div className="flex flex-col items-center border-r border-[#3a3f4b] pr-2 justify-between">
         <div className="flex items-center gap-1">
           <button

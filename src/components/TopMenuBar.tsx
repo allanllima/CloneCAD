@@ -21,6 +21,8 @@ interface TopMenuBarProps {
   onOpenArchitecture: () => void;
   onOpenDesignCenter?: () => void;
   onOpenCreateBlock?: () => void;
+  onOpenDimStyle?: () => void;
+  onOpenDataExtraction?: () => void;
   onLoadSample: (sampleType: 'mechanical' | 'architectural') => void;
 }
 
@@ -30,6 +32,8 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   onOpenArchitecture,
   onOpenDesignCenter,
   onOpenCreateBlock,
+  onOpenDimStyle,
+  onOpenDataExtraction,
   onLoadSample,
 }) => {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -550,6 +554,104 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
                 className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#61afef]"
               >
                 <span>Design Center Library</span> <span className="text-[#5c6370]">DC</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* DIMENSIONS MENU */}
+        <div className="relative">
+          <button
+            onClick={() => setOpenMenu(openMenu === 'dimensions' ? null : 'dimensions')}
+            className={`px-2.5 py-1 rounded hover:bg-[#282c34] hover:text-white transition-colors ${
+              openMenu === 'dimensions' ? 'bg-[#282c34] text-white' : ''
+            }`}
+          >
+            Dimensions
+          </button>
+          {openMenu === 'dimensions' && (
+            <div className="absolute left-0 top-full mt-1 w-56 bg-[#21252b] border border-[#3a3f4b] rounded shadow-2xl py-1 z-50 text-[12px]">
+              <button
+                onClick={() => {
+                  core.setActiveTool('dimlinear');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Linear Dimension</span> <span className="text-[#5c6370]">DLI</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('dimaligned');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Aligned Dimension</span> <span className="text-[#5c6370]">DAL</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('dimradius');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Radius Dimension</span> <span className="text-[#5c6370]">DRA</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('dimdiameter');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Diameter Dimension</span> <span className="text-[#5c6370]">DDI</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('dimangular');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Angular Dimension</span> <span className="text-[#5c6370]">DAN</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('dimordinate');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Ordinate Dimension</span> <span className="text-[#5c6370]">DOR</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('mleader');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Multileader Note</span> <span className="text-[#5c6370]">ML</span>
+              </button>
+              <div className="border-t border-[#3a3f4b] my-1" />
+              <button
+                onClick={() => {
+                  setOpenMenu(null);
+                  onOpenDimStyle?.();
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#61afef]"
+              >
+                <span>Dimension Style...</span> <span className="text-[#5c6370]">DIMSTYLE</span>
+              </button>
+              <button
+                onClick={() => {
+                  setOpenMenu(null);
+                  onOpenDataExtraction?.();
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#98c379]"
+              >
+                <span>Data Extraction (BOM)...</span> <span className="text-[#5c6370]">DX</span>
               </button>
             </div>
           )}
