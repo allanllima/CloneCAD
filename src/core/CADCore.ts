@@ -14,6 +14,16 @@ import {
   CADBlockDefinition,
   CADGrip,
   CADDimStyle,
+  ImageEntity,
+  LineEntity,
+  CircleEntity,
+  ArcEntity,
+  RectangleEntity,
+  PolylineEntity,
+  PolylineVertex,
+  TextEntity,
+  EllipseEntity,
+  SplineEntity,
 } from './types';
 import { Viewport } from './Viewport';
 import { HistoryManager } from './HistoryManager';
@@ -36,6 +46,9 @@ import {
   PlotConfig,
 } from './layout/LayoutTypes';
 import { ModifyEntityCommand } from '../commands/ModifyEntityCommand';
+import { DXFParser } from './interop/DXFParser';
+import { DXFSerializer } from './interop/DXFSerializer';
+import { RasterImageManager } from './interop/RasterImageManager';
 
 export class CADCore implements CADCoreAPI {
   // Subsystems
@@ -291,6 +304,17 @@ export class CADCore implements CADCoreAPI {
       this.eventBus.emit('entity:removed', id);
       this.requestRender();
     }
+  }
+
+  public clearEntities(): void {
+    const ids = Array.from(this.entities.keys());
+    for (const id of ids) {
+      this.selection.unindexEntity(id);
+    }
+    this.entities.clear();
+    this.selection.clear();
+    this.eventBus.emit('entity:removed', '*');
+    this.requestRender();
   }
 
   public updateEntity(entity: CADEntity): void {
@@ -1006,5 +1030,196 @@ export class CADCore implements CADCoreAPI {
 
   public getPDFPlotter(): PDFPlotter {
     return this.pdfPlotter;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Interoperability & DXF/DWG/Raster (Phase 6)
+  // ---------------------------------------------------------------------------
+  public importDXF(dxfContent: string, options?: { clearExisting?: boolean; scale?: number }): { entitiesCount: number; layersCount: number } {
+    if (options?.clearExisting) {
+      this.clearEntities();
+    }
+
+    const parser = new DXFParser();
+    const result = parser.parse(dxfContent);
+
+    // Merge or create layers
+    for (const layer of result.layers) {
+      if (!this.layers.getLayer(layer.id)) {
+        this.layers.addLayer(layer);
+      }
+    }
+
+    // Merge blocks
+    for (const block of result.blocks) {
+      if (!this.blockManager.getBlock(block.name)) {
+        this.blockManager.registerBlock(block);
+      }
+    }
+
+    // Add entities
+    const scale = options?.scale ?? 1;
+    for (let ent of result.entities) {
+      if (scale !== 1) {
+        ent = this.scaleEntity(ent, scale);
+      }
+      this.addEntity(ent);
+    }
+
+    this.logCommandMessage(`DXF Importado com sucesso: ${result.entities.length} entidades, ${result.layers.length} camadas.`);
+    this.eventBus.emit('dxf:imported', { entitiesCount: result.entities.length, layersCount: result.layers.length });
+    this.zoomExtents();
+    return { entitiesCount: result.entities.length, layersCount: result.layers.length };
+  }
+
+  private scaleEntity(entity: CADEntity, s: number): CADEntity {
+    if (s === 1) return entity;
+    const clone = { ...entity };
+    switch (clone.type) {
+      case 'line': {
+        const l = clone as LineEntity;
+        return {
+          ...l,
+          start: { x: l.start.x * s, y: l.start.y * s },
+          end: { x: l.end.x * s, y: l.end.y * s },
+        };
+      }
+      case 'circle': {
+        const c = clone as CircleEntity;
+        return {
+          ...c,
+          center: { x: c.center.x * s, y: c.center.y * s },
+          radius: c.radius * s,
+        };
+      }
+      case 'arc': {
+        const a = clone as ArcEntity;
+        return {
+          ...a,
+          center: { x: a.center.x * s, y: a.center.y * s },
+          radius: a.radius * s,
+        };
+      }
+      case 'rectangle': {
+        const r = clone as RectangleEntity;
+        return {
+          ...r,
+          origin: { x: r.origin.x * s, y: r.origin.y * s },
+          width: r.width * s,
+          height: r.height * s,
+        };
+      }
+      case 'polyline': {
+        const pl = clone as PolylineEntity;
+        const pts = (pl.points || pl.vertices || []).map((v: PolylineVertex) => ({ ...v, x: v.x * s, y: v.y * s }));
+        return {
+          ...pl,
+          points: pts,
+          vertices: pts,
+        };
+      }
+      case 'text': {
+        const t = clone as TextEntity;
+        return {
+          ...t,
+          position: { x: t.position.x * s, y: t.position.y * s },
+          fontSize: (t.fontSize || 12) * s,
+        };
+      }
+      case 'ellipse': {
+        const el = clone as EllipseEntity;
+        return {
+          ...el,
+          center: { x: el.center.x * s, y: el.center.y * s },
+          radiusX: el.radiusX * s,
+          radiusY: el.radiusY * s,
+        };
+      }
+      case 'spline': {
+        const sp = clone as SplineEntity;
+        return {
+          ...sp,
+          controlPoints: sp.controlPoints.map((p: Point2D) => ({ x: p.x * s, y: p.y * s })),
+        };
+      }
+      case 'insert': {
+        const ins = clone as any;
+        return {
+          ...ins,
+          position: { x: ins.position.x * s, y: ins.position.y * s },
+          scale: { x: (ins.scale?.x ?? 1) * s, y: (ins.scale?.y ?? 1) * s, z: (ins.scale?.z ?? 1) * s },
+        };
+      }
+      case 'dimension': {
+        const d = clone as any;
+        return {
+          ...d,
+          defPoint1: d.defPoint1 ? { x: d.defPoint1.x * s, y: d.defPoint1.y * s } : undefined,
+          defPoint2: d.defPoint2 ? { x: d.defPoint2.x * s, y: d.defPoint2.y * s } : undefined,
+          dimLinePoint: d.dimLinePoint ? { x: d.dimLinePoint.x * s, y: d.dimLinePoint.y * s } : undefined,
+          measurement: d.measurement * s,
+        };
+      }
+      case 'image': {
+        const img = clone as ImageEntity;
+        return {
+          ...img,
+          position: { x: img.position.x * s, y: img.position.y * s },
+          width: img.width * s,
+          height: img.height * s,
+        };
+      }
+      default:
+        return clone;
+    }
+  }
+
+  public exportDXF(options?: { version?: 'R12' | 'R2000' | 'R2018' }): string {
+    const dxf = DXFSerializer.serialize(
+      this.getEntities(),
+      this.getLayers(),
+      this.blockManager.getAllBlocks()
+    );
+    this.eventBus.emit('dxf:exported');
+    return dxf;
+  }
+
+  public downloadDXF(fileName = 'drawing.dxf', options?: { version?: 'R12' | 'R2000' | 'R2018' }): void {
+    const dxfString = this.exportDXF(options);
+    const blob = new Blob([dxfString], { type: 'application/dxf;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName.endsWith('.dxf') ? fileName : `${fileName}.dxf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    this.logCommandMessage(`Arquivo DXF exportado: ${link.download}`);
+  }
+
+  public attachRasterImage(image: Omit<ImageEntity, 'id' | 'type' | 'layerId'> & { layerId?: string }): ImageEntity {
+    const imgEntity = RasterImageManager.createImageEntity(image);
+    this.addEntity(imgEntity, true);
+    this.logCommandMessage(`Imagem anexada: ${imgEntity.name || imgEntity.id} em (${imgEntity.position.x.toFixed(1)}, ${imgEntity.position.y.toFixed(1)})`);
+    return imgEntity;
+  }
+
+  public calibrateImageScale(imageId: string, p1: Point2D, p2: Point2D, realDistance: number): boolean {
+    const entity = this.getEntity(imageId);
+    if (!entity || entity.type !== 'image') return false;
+
+    const scaled = RasterImageManager.calibrateScale(entity as ImageEntity, p1, p2, realDistance);
+    this.updateEntity(scaled);
+    this.logCommandMessage(`Escala da imagem calibrada para distância real de ${realDistance.toFixed(2)}.`);
+    return true;
+  }
+
+  public openDXFImportModal(): void {
+    this.eventBus.emit('dxf:open_import_modal');
+  }
+
+  public openRasterImageModal(): void {
+    this.eventBus.emit('image:open_attach_modal');
   }
 }

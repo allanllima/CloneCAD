@@ -281,6 +281,14 @@ export class SelectionManager {
         if (p.y > maxY) maxY = p.y;
       }
       return { minX: minX - 5, maxX: maxX + 15, minY: minY - 5, maxY: maxY + 5 };
+    } else if (ent.type === 'image') {
+      const img = ent as any;
+      return {
+        minX: img.position.x,
+        maxX: img.position.x + img.width,
+        minY: img.position.y,
+        maxY: img.position.y + img.height,
+      };
     }
     return null;
   }
@@ -413,6 +421,14 @@ export class SelectionManager {
       if (this.distancePointToSegment(pt, p2, p3) <= tol * 1.5) return true;
       if (Math.hypot(pt.x - p1.x, pt.y - p1.y) <= tol * 2) return true;
       if (Math.hypot(pt.x - p3.x, pt.y - p3.y) <= tol * 2) return true;
+    } else if (ent.type === 'image') {
+      const img = ent as any;
+      return (
+        pt.x >= img.position.x - tol &&
+        pt.x <= img.position.x + img.width + tol &&
+        pt.y >= img.position.y - tol &&
+        pt.y <= img.position.y + img.height + tol
+      );
     }
     return false;
   }

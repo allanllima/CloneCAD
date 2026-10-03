@@ -998,6 +998,34 @@ export class CADRenderer {
         return this.buildMultileaderObject(ml, material);
       }
 
+      case 'image': {
+        const img = ent as any;
+        const geom = new THREE.PlaneGeometry(img.width || 100, img.height || 100);
+        let mat: THREE.Material;
+        if (img.url && typeof window !== 'undefined') {
+          const texture = new THREE.TextureLoader().load(img.url, () => {
+            this.requestRender();
+          });
+          mat = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: img.opacity !== undefined ? img.opacity : 1.0,
+            depthWrite: false,
+          });
+        } else {
+          mat = new THREE.MeshBasicMaterial({
+            color: 0x3e4451,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.8,
+          });
+        }
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(img.position.x + (img.width || 100) / 2, img.position.y + (img.height || 100) / 2, -1);
+        if (img.rotation) mesh.rotation.z = img.rotation;
+        return mesh;
+      }
+
       default:
         return null;
     }

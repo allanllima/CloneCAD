@@ -15,6 +15,8 @@ import { BlockAttributesModal } from './components/BlockAttributesModal';
 import { DimStyleModal } from './components/DimStyleModal';
 import { DataExtractionModal } from './components/DataExtractionModal';
 import { PlotModal } from './components/PlotModal';
+import { DXFImportModal } from './components/DXFImportModal';
+import { RasterImageModal } from './components/RasterImageModal';
 import { loadSampleDrawing } from './utils/sampleDrawings';
 import { BlockReferenceEntity } from './core/types';
 
@@ -35,6 +37,8 @@ export const App: React.FC = () => {
   const [isDimStyleOpen, setIsDimStyleOpen] = useState(false);
   const [isDataExtractionOpen, setIsDataExtractionOpen] = useState(false);
   const [isPlotModalOpen, setIsPlotModalOpen] = useState(false);
+  const [isDXFImportOpen, setIsDXFImportOpen] = useState(false);
+  const [isRasterImageOpen, setIsRasterImageOpen] = useState(false);
   const [attributesModalEntity, setAttributesModalEntity] = useState<BlockReferenceEntity | null>(null);
   const [showDynamicInput, setShowDynamicInput] = useState(true);
 
@@ -60,6 +64,12 @@ export const App: React.FC = () => {
     const unsubPlot = core.on('plot:open_modal', () => {
       setIsPlotModalOpen(true);
     });
+    const unsubDxfImport = core.on('dxf:open_import_modal', () => {
+      setIsDXFImportOpen(true);
+    });
+    const unsubRasterImg = core.on('image:open_attach_modal', () => {
+      setIsRasterImageOpen(true);
+    });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
@@ -75,6 +85,8 @@ export const App: React.FC = () => {
       unsubDimStyle();
       unsubDataExt();
       unsubPlot();
+      unsubDxfImport();
+      unsubRasterImg();
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [core]);
@@ -91,6 +103,8 @@ export const App: React.FC = () => {
         onOpenDimStyle={() => setIsDimStyleOpen(true)}
         onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
         onOpenPlot={() => setIsPlotModalOpen(true)}
+        onOpenDXFImport={() => setIsDXFImportOpen(true)}
+        onOpenRasterImage={() => setIsRasterImageOpen(true)}
         onLoadSample={(type) => loadSampleDrawing(core, type)}
       />
 
@@ -103,6 +117,8 @@ export const App: React.FC = () => {
         onOpenDimStyle={() => setIsDimStyleOpen(true)}
         onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
         onOpenPlot={() => setIsPlotModalOpen(true)}
+        onOpenDXFImport={() => setIsDXFImportOpen(true)}
+        onOpenRasterImage={() => setIsRasterImageOpen(true)}
       />
 
       {/* 3. Central Canvas & Dockable Side Panels */}
@@ -185,6 +201,18 @@ export const App: React.FC = () => {
         core={core}
         isOpen={isPlotModalOpen}
         onClose={() => setIsPlotModalOpen(false)}
+      />
+
+      <DXFImportModal
+        core={core}
+        isOpen={isDXFImportOpen}
+        onClose={() => setIsDXFImportOpen(false)}
+      />
+
+      <RasterImageModal
+        core={core}
+        isOpen={isRasterImageOpen}
+        onClose={() => setIsRasterImageOpen(false)}
       />
     </div>
   );

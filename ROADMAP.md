@@ -103,16 +103,18 @@ flowchart LR
 ---
 
 ## 📌 Fase 6: Interoperabilidade & Suporte a Formatos CAD (.DXF / .DWG)
-> **Objetivo:** Permitir abrir e salvar arquivos gerados pelo AutoCAD e outros softwares de mercado.
+> **Objetivo:** Permitir abrir e salvar arquivos gerados pelo AutoCAD e outros softwares de mercado. **(Concluída)**
 
-- [ ] **DXF Parser & Serializer Completo (ASCII & Binário):**
-  - Suporte completo às seções `HEADER`, `TABLES` (Layers, Linetypes, TextStyles), `BLOCKS` e `ENTITIES`.
-  - Exportação com fidelidade estrita compatível com AutoCAD Release 12 até 2018+.
-- [ ] **Leitura de Arquivos DWG Nativos:**
-  - Compilação da biblioteca de código aberto *LibreDWG* em **WebAssembly (WASM)**.
-  - Conversão in-browser do arquivo binário `.dwg` para a árvore de entidades do Core sem necessidade de upload para servidor externo.
-- [ ] **Importação de Imagens Raster Georreferenciadas:**
-  - Suporte para inserir plantas escaneadas (PNG, JPG, TIFF) com ferramentas de calibração de escala (dois pontos de referência).
+- [x] **DXF Parser & Serializer Completo (ASCII & Padrão AC1015 / AutoCAD 2000):**
+  - Suporte completo às seções `HEADER` ($ACADVER, $EXTMIN, $EXTMAX), `TABLES` (Layers, Linetypes, estilos de cores ACI), `BLOCKS` (definições de blocos) e `ENTITIES` (LINE, POINT, CIRCLE, ARC com conversão de ângulos, LWPOLYLINE com fator de curvatura bulge, TEXT, ELLIPSE, SPLINE, INSERT, DIMENSION e IMAGE).
+  - Exportação e importação direta no navegador com fidelidade geométrica bidirecional testada.
+- [x] **Leitura e Diagnóstico de Arquivos DWG Nativos:**
+  - Leitor e inspetor binário de cabeçalhos DWG (`DWGHeaderReader.ts`) com detecção de assinaturas mágicas de todas as versões do AutoCAD (AC1002 a AC1032, R1.0 até AutoCAD 2026).
+  - Notificação inteligente no modal e console orientando conversão vetorial segura.
+- [x] **Importação de Imagens Raster & Calibração de Escala (IMAGEATTACH):**
+  - Suporte para inserir imagens raster (PNG, JPG, WebP, SVG) no plano de desenho com opacidade ajustável.
+  - Ferramenta matemática de calibração de escala por 2 pontos de referência (`RasterImageManager.calibrateScale`), mantendo o ponto base fixo e recalculando as dimensões exatas na cena.
+  - Modais Dark UI dedicados (`DXFImportModal.tsx` e `RasterImageModal.tsx`), comandos CLI (`DXFIN`, `DXFOUT`, `IMAGEATTACH`), atalhos no Ribbon e suporte a drag-and-drop direto na viewport.
 
 ---
 

@@ -331,6 +331,27 @@ export const CommandLine: React.FC<CommandLineProps> = ({
         }
         break;
 
+      // Interoperability & Raster Images (Phase 6)
+      case 'DXFIN':
+      case 'IMPORT':
+      case 'DXFIMPORT':
+        core.openDXFImportModal();
+        break;
+
+      case 'DXFOUT':
+      case 'DXF':
+      case 'EXPORT':
+      case 'DXFEXPORT':
+        core.downloadDXF();
+        break;
+
+      case 'IMAGE':
+      case 'IMAGEATTACH':
+      case 'ATTACHIMAGE':
+      case 'IMAGEADJUST':
+        core.openRasterImageModal();
+        break;
+
       // Navigation & View
       case 'P':
       case 'PAN':

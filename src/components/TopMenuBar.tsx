@@ -25,6 +25,8 @@ interface TopMenuBarProps {
   onOpenDimStyle?: () => void;
   onOpenDataExtraction?: () => void;
   onOpenPlot?: () => void;
+  onOpenDXFImport?: () => void;
+  onOpenRasterImage?: () => void;
   onLoadSample: (sampleType: 'mechanical' | 'architectural') => void;
 }
 
@@ -37,6 +39,8 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   onOpenDimStyle,
   onOpenDataExtraction,
   onOpenPlot,
+  onOpenDXFImport,
+  onOpenRasterImage,
   onLoadSample,
 }) => {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -171,6 +175,27 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
                 Load Mechanical Part
               </button>
               <div className="border-t border-[#3a3f4b] my-1" />
+              <button
+                onClick={() => {
+                  if (onOpenDXFImport) onOpenDXFImport();
+                  else core.openDXFImportModal();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex items-center gap-2 text-[#61afef]"
+              >
+                <Upload size={14} />
+                Import DXF / DWG...
+              </button>
+              <button
+                onClick={() => {
+                  core.downloadDXF();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex items-center gap-2"
+              >
+                <Download size={14} />
+                Export DXF (AutoCAD R2000)
+              </button>
               <button
                 onClick={() => {
                   handleExportJSON();
@@ -572,6 +597,17 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
                 className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#61afef]"
               >
                 <span>Design Center Library</span> <span className="text-[#5c6370]">DC</span>
+              </button>
+              <div className="border-t border-[#3a3f4b] my-1" />
+              <button
+                onClick={() => {
+                  setOpenMenu(null);
+                  if (onOpenRasterImage) onOpenRasterImage();
+                  else core.openRasterImageModal();
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between text-[#98c379]"
+              >
+                <span>Attach Raster Image...</span> <span className="text-[#5c6370]">IMAGE</span>
               </button>
             </div>
           )}

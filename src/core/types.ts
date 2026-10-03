@@ -59,6 +59,7 @@ export type EntityType =
   | 'spline'
   | 'ellipse'
   | 'hatch'
+  | 'image'
   | string;
 
 export interface BaseEntity {
@@ -97,6 +98,7 @@ export interface PolylineVertex extends Point2D {
 export interface PolylineEntity extends BaseEntity {
   type: 'polyline';
   points: PolylineVertex[];
+  vertices?: PolylineVertex[];
   closed: boolean;
 }
 
@@ -270,6 +272,17 @@ export interface CADGrip {
   index?: number;
 }
 
+export interface ImageEntity extends BaseEntity {
+  type: 'image';
+  url: string;
+  position: Point2D;
+  width: number;
+  height: number;
+  rotation?: number; // radians
+  opacity?: number;  // 0 to 1
+  name?: string;
+}
+
 export type CADEntity =
   | LineEntity
   | CircleEntity
@@ -280,6 +293,7 @@ export type CADEntity =
   | SplineEntity
   | EllipseEntity
   | HatchEntity
+  | ImageEntity
   | BlockReferenceEntity
   | DimensionEntity
   | MultileaderEntity
@@ -477,6 +491,15 @@ export interface CADCoreAPI {
   getPlotStyleTables(): import('./layout/LayoutTypes').PlotStyleTable[];
   downloadPlotPDF(config: import('./layout/LayoutTypes').PlotConfig): void;
   openPlotModal(): void;
+
+  // Interoperability & DXF/DWG/Raster (Phase 6)
+  importDXF(dxfContent: string, options?: { clearExisting?: boolean; scale?: number }): { entitiesCount: number; layersCount: number };
+  exportDXF(options?: { version?: 'R12' | 'R2000' | 'R2018' }): string;
+  downloadDXF(fileName?: string, options?: { version?: 'R12' | 'R2000' | 'R2018' }): void;
+  attachRasterImage(image: Omit<ImageEntity, 'id' | 'type' | 'layerId'> & { layerId?: string }): ImageEntity;
+  calibrateImageScale(imageId: string, p1: Point2D, p2: Point2D, realDistance: number): boolean;
+  openDXFImportModal(): void;
+  openRasterImageModal(): void;
 }
 
 export type CADCoreEvent =
@@ -503,4 +526,8 @@ export type CADCoreEvent =
   | 'layout:changed'
   | 'space:changed'
   | 'plot:open_modal'
+  | 'dxf:open_import_modal'
+  | 'image:open_attach_modal'
+  | 'dxf:imported'
+  | 'dxf:exported'
   | 'render:requested';

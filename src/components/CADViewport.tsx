@@ -118,6 +118,18 @@ export const CADViewport: React.FC<CADViewportProps> = ({ core, showDynamicInput
       onWheel={handleWheel}
       onMouseLeave={handleMouseLeave}
       onContextMenu={(e) => e.preventDefault()}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          const file = e.dataTransfer.files[0];
+          if (file.name.toLowerCase().endsWith('.dxf') || file.name.toLowerCase().endsWith('.dwg')) {
+            core.openDXFImportModal();
+          } else if (/\.(png|jpe?g|webp|svg)$/i.test(file.name)) {
+            core.openRasterImageModal();
+          }
+        }
+      }}
       tabIndex={0}
     >
       <CADCrosshair

@@ -38,6 +38,9 @@ import {
   GitCommit,
   Printer,
   LayoutTemplate,
+  Image as ImageIcon,
+  Upload,
+  Download,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
@@ -48,6 +51,8 @@ interface RibbonToolbarProps {
   onOpenDimStyle?: () => void;
   onOpenDataExtraction?: () => void;
   onOpenPlot?: () => void;
+  onOpenDXFImport?: () => void;
+  onOpenRasterImage?: () => void;
 }
 
 export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
@@ -58,6 +63,8 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   onOpenDimStyle,
   onOpenDataExtraction,
   onOpenPlot,
+  onOpenDXFImport,
+  onOpenRasterImage,
 }) => {
   const [activeToolId, setActiveToolId] = useState<string | null>(core.getActiveTool()?.id || 'select');
   const [layers, setLayers] = useState<CADLayer[]>(core.getLayers());
@@ -471,9 +478,18 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
             <Library size={18} />
             <span className="text-[10px] mt-0.5 font-medium">Library</span>
           </button>
+
+          <button
+            onClick={() => (onOpenRasterImage ? onOpenRasterImage() : core.openRasterImageModal())}
+            title="Attach Raster Image (IMAGEATTACH)"
+            className="flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] hover:bg-[#282c34] text-[#98c379] hover:text-white"
+          >
+            <ImageIcon size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Image</span>
+          </button>
         </div>
         <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
-          Block
+          Block & Image
         </span>
       </div>
 
@@ -683,9 +699,27 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
             <Printer size={18} />
             <span className="text-[10px] mt-0.5 font-medium font-bold">Plot</span>
           </button>
+
+          <button
+            onClick={() => (onOpenDXFImport ? onOpenDXFImport() : core.openDXFImportModal())}
+            title="Import DXF / DWG (DXFIN)"
+            className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#282c34] text-[#61afef] hover:text-white min-w-[44px]"
+          >
+            <Upload size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">DXF In</span>
+          </button>
+
+          <button
+            onClick={() => core.downloadDXF()}
+            title="Export DXF AutoCAD R2000 (DXFOUT)"
+            className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#282c34] text-[#e5c07b] hover:text-white min-w-[44px]"
+          >
+            <Download size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">DXF Out</span>
+          </button>
         </div>
         <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
-          Output
+          Output & DXF
         </span>
       </div>
     </div>
