@@ -14,6 +14,7 @@ import { BlockCreationModal } from './components/BlockCreationModal';
 import { BlockAttributesModal } from './components/BlockAttributesModal';
 import { DimStyleModal } from './components/DimStyleModal';
 import { DataExtractionModal } from './components/DataExtractionModal';
+import { PlotModal } from './components/PlotModal';
 import { loadSampleDrawing } from './utils/sampleDrawings';
 import { BlockReferenceEntity } from './core/types';
 
@@ -33,6 +34,7 @@ export const App: React.FC = () => {
   const [isBlockCreateOpen, setIsBlockCreateOpen] = useState(false);
   const [isDimStyleOpen, setIsDimStyleOpen] = useState(false);
   const [isDataExtractionOpen, setIsDataExtractionOpen] = useState(false);
+  const [isPlotModalOpen, setIsPlotModalOpen] = useState(false);
   const [attributesModalEntity, setAttributesModalEntity] = useState<BlockReferenceEntity | null>(null);
   const [showDynamicInput, setShowDynamicInput] = useState(true);
 
@@ -55,11 +57,25 @@ export const App: React.FC = () => {
     const unsubDataExt = core.on('data_extraction:open_modal', () => {
       setIsDataExtractionOpen(true);
     });
+    const unsubPlot = core.on('plot:open_modal', () => {
+      setIsPlotModalOpen(true);
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        setIsPlotModalOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       unsubCreate();
       unsubAttrs();
       unsubDimStyle();
       unsubDataExt();
+      unsubPlot();
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [core]);
 
@@ -74,6 +90,7 @@ export const App: React.FC = () => {
         onOpenCreateBlock={() => setIsBlockCreateOpen(true)}
         onOpenDimStyle={() => setIsDimStyleOpen(true)}
         onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
+        onOpenPlot={() => setIsPlotModalOpen(true)}
         onLoadSample={(type) => loadSampleDrawing(core, type)}
       />
 
@@ -85,6 +102,7 @@ export const App: React.FC = () => {
         onOpenCreateBlock={() => setIsBlockCreateOpen(true)}
         onOpenDimStyle={() => setIsDimStyleOpen(true)}
         onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
+        onOpenPlot={() => setIsPlotModalOpen(true)}
       />
 
       {/* 3. Central Canvas & Dockable Side Panels */}
@@ -108,11 +126,12 @@ export const App: React.FC = () => {
         onOpenDataExtraction={() => setIsDataExtractionOpen(true)}
       />
 
-      {/* 5. AutoCAD Status Bar */}
+      {/* 5. AutoCAD Status Bar with Layout Tabs */}
       <StatusBar
         core={core}
         onOpenLayers={() => setIsLayersOpen(true)}
         onOpenProperties={() => setIsPropertiesOpen(!isPropertiesOpen)}
+        onOpenPlotModal={() => setIsPlotModalOpen(true)}
         isPropertiesOpen={isPropertiesOpen}
         showDynamicInput={showDynamicInput}
         setShowDynamicInput={setShowDynamicInput}
@@ -160,6 +179,12 @@ export const App: React.FC = () => {
         core={core}
         isOpen={isDataExtractionOpen}
         onClose={() => setIsDataExtractionOpen(false)}
+      />
+
+      <PlotModal
+        core={core}
+        isOpen={isPlotModalOpen}
+        onClose={() => setIsPlotModalOpen(false)}
       />
     </div>
   );

@@ -26,10 +26,12 @@ import { BlockPlugin } from './block/BlockPlugin';
 import { InsertPlugin } from './block/InsertPlugin';
 import { DimensionPlugin } from './dimension/DimensionPlugin';
 import { MultileaderPlugin } from './dimension/MultileaderPlugin';
+import { MViewPlugin } from './utility/MViewPlugin';
 
 export * from './utility/SelectPlugin';
 export * from './utility/PanPlugin';
 export * from './utility/MeasurePlugin';
+export * from './utility/MViewPlugin';
 export * from './draw/LinePlugin';
 export * from './draw/CirclePlugin';
 export * from './draw/RectanglePlugin';
@@ -63,6 +65,7 @@ export function registerDefaultPlugins(core: CADCoreAPI): void {
   core.registerPlugin(new SelectPlugin());
   core.registerPlugin(new PanPlugin());
   core.registerPlugin(new MeasurePlugin());
+  core.registerPlugin(new MViewPlugin());
 
   // Draw
   core.registerPlugin(new LinePlugin());

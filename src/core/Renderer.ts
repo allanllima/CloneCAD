@@ -16,7 +16,10 @@ import {
   DimensionEntity,
   MultileaderEntity,
   CADDimStyle,
+  CADLayout,
+  LayoutViewport,
 } from './types';
+import { LayoutManager } from './layout/LayoutManager';
 import { Viewport } from './Viewport';
 import { BulgeUtils } from './geometry/BulgeUtils';
 import { SplineUtils } from './geometry/SplineUtils';
@@ -35,6 +38,7 @@ export class CADRenderer {
   // Groups
   private gridGroup: THREE.Group;
   private entityGroup: THREE.Group;
+  private paperGroup: THREE.Group;
   private previewGroup: THREE.Group;
   private selectionBoxGroup: THREE.Group;
   private ucsGroup: THREE.Group;
@@ -86,12 +90,14 @@ export class CADRenderer {
     // 4. Groups
     this.gridGroup = new THREE.Group();
     this.entityGroup = new THREE.Group();
+    this.paperGroup = new THREE.Group();
     this.previewGroup = new THREE.Group();
     this.selectionBoxGroup = new THREE.Group();
     this.ucsGroup = new THREE.Group();
     this.trackingGroup = new THREE.Group();
     this.gripsGroup = new THREE.Group();
 
+    this.scene.add(this.paperGroup);
     this.scene.add(this.gridGroup);
     this.scene.add(this.entityGroup);
     this.scene.add(this.previewGroup);
@@ -353,6 +359,178 @@ export class CADRenderer {
     }
 
     this.requestRender();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Paper Space Layout Rendering (Phase 5)
+  // ---------------------------------------------------------------------------
+  public renderPaperLayout(
+    layout: CADLayout | undefined,
+    modelEntities: CADEntity[],
+    layers: CADLayer[],
+    layoutManager: LayoutManager
+  ): void {
+    this.clearGroup(this.paperGroup);
+    if (!layout) {
+      this.gridGroup.visible = true;
+      this.ucsGroup.visible = true;
+      return;
+    }
+
+    // Hide Model grid and UCS icon when viewing Paper Space sheet
+    this.gridGroup.visible = false;
+    this.ucsGroup.visible = false;
+    this.clearGroup(this.entityGroup);
+
+    const dims = layoutManager.getPaperDimensions(layout);
+    const W = dims.width;
+    const H = dims.height;
+
+    // 1. Paper Sheet Background (White plane)
+    const sheetGeom = new THREE.PlaneGeometry(W, H);
+    const sheetMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sheetMesh = new THREE.Mesh(sheetGeom, sheetMat);
+    sheetMesh.position.set(W / 2, H / 2, -1);
+    this.paperGroup.add(sheetMesh);
+
+    // Drop shadow behind sheet
+    const shadowGeom = new THREE.PlaneGeometry(W + 6, H + 6);
+    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x14171a });
+    const shadowMesh = new THREE.Mesh(shadowGeom, shadowMat);
+    shadowMesh.position.set(W / 2 + 3, H / 2 - 3, -2);
+    this.paperGroup.add(shadowMesh);
+
+    // Outer border of sheet
+    const borderPoints = [
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(W, 0, 0),
+      new THREE.Vector3(W, H, 0),
+      new THREE.Vector3(0, H, 0),
+      new THREE.Vector3(0, 0, 0),
+    ];
+    const borderGeom = new THREE.BufferGeometry().setFromPoints(borderPoints);
+    const borderLine = new THREE.Line(borderGeom, new THREE.LineBasicMaterial({ color: 0xcccccc }));
+    this.paperGroup.add(borderLine);
+
+    // 2. Printable Margins (ABNT NBR 10068)
+    const m = layout.margins;
+    const marginPoints = [
+      new THREE.Vector3(m.left, m.bottom, 0.5),
+      new THREE.Vector3(W - m.right, m.bottom, 0.5),
+      new THREE.Vector3(W - m.right, H - m.top, 0.5),
+      new THREE.Vector3(m.left, H - m.top, 0.5),
+      new THREE.Vector3(m.left, m.bottom, 0.5),
+    ];
+    const marginGeom = new THREE.BufferGeometry().setFromPoints(marginPoints);
+    const marginLine = new THREE.Line(marginGeom, new THREE.LineBasicMaterial({ color: 0x222222, linewidth: 2 }));
+    this.paperGroup.add(marginLine);
+
+    // 3. Title Block (Carimbo)
+    if (layout.titleBlock) {
+      const boxW = 175;
+      const boxH = 50;
+      const x0 = W - m.right - boxW;
+      const y0 = m.bottom;
+
+      const tbBox = [
+        new THREE.Vector3(x0, y0, 1),
+        new THREE.Vector3(x0 + boxW, y0, 1),
+        new THREE.Vector3(x0 + boxW, y0 + boxH, 1),
+        new THREE.Vector3(x0, y0 + boxH, 1),
+        new THREE.Vector3(x0, y0, 1),
+      ];
+      this.paperGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(tbBox), new THREE.LineBasicMaterial({ color: 0x000000 })));
+
+      const line1 = [new THREE.Vector3(x0, y0 + 15, 1), new THREE.Vector3(x0 + boxW, y0 + 15, 1)];
+      const line2 = [new THREE.Vector3(x0, y0 + 32, 1), new THREE.Vector3(x0 + boxW, y0 + 32, 1)];
+      const line3 = [new THREE.Vector3(x0 + 110, y0, 1), new THREE.Vector3(x0 + 110, y0 + 15, 1)];
+      this.paperGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line1), new THREE.LineBasicMaterial({ color: 0x555555 })));
+      this.paperGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line2), new THREE.LineBasicMaterial({ color: 0x555555 })));
+      this.paperGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line3), new THREE.LineBasicMaterial({ color: 0x555555 })));
+    }
+
+    // 4. Viewports
+    for (const vp of layout.viewports) {
+      // Viewport Border
+      const vpPoints = [
+        new THREE.Vector3(vp.x, vp.y, 1),
+        new THREE.Vector3(vp.x + vp.width, vp.y, 1),
+        new THREE.Vector3(vp.x + vp.width, vp.y + vp.height, 1),
+        new THREE.Vector3(vp.x, vp.y + vp.height, 1),
+        new THREE.Vector3(vp.x, vp.y, 1),
+      ];
+      const vpBorder = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(vpPoints),
+        new THREE.LineBasicMaterial({ color: 0x007acc, linewidth: 2 })
+      );
+      this.paperGroup.add(vpBorder);
+
+      // Model entities framed in this viewport
+      const visible = modelEntities.filter(
+        (e) => e.visible !== false && layoutManager.isLayerVisibleInViewport(vp, e.layerId)
+      );
+
+      for (const ent of visible) {
+        const transformedEnt = this.cloneAndTransformEntityToPaper(ent, vp, layoutManager);
+        if (transformedEnt) {
+          const mat = this.getOrCreateLineMaterial(0x111111);
+          const obj = this.buildEntityMesh(transformedEnt, mat);
+          if (obj) {
+            obj.position.z = 2;
+            this.paperGroup.add(obj);
+          }
+        }
+      }
+    }
+
+    this.requestRender();
+  }
+
+  private cloneAndTransformEntityToPaper(
+    ent: CADEntity,
+    vp: LayoutViewport,
+    layoutManager: LayoutManager
+  ): CADEntity | null {
+    const transformPt = (pt: Point2D) => layoutManager.modelToPaper(vp, pt);
+
+    if (ent.type === 'line') {
+      const l = ent as LineEntity;
+      return {
+        ...l,
+        start: transformPt(l.start),
+        end: transformPt(l.end),
+      };
+    } else if (ent.type === 'circle') {
+      const c = ent as CircleEntity;
+      return {
+        ...c,
+        center: transformPt(c.center),
+        radius: c.radius * vp.scale,
+      };
+    } else if (ent.type === 'arc') {
+      const a = ent as ArcEntity;
+      return {
+        ...a,
+        center: transformPt(a.center),
+        radius: a.radius * vp.scale,
+      };
+    } else if (ent.type === 'rectangle') {
+      const r = ent as RectangleEntity;
+      const p1 = transformPt(r.origin);
+      return {
+        ...r,
+        origin: p1,
+        width: r.width * vp.scale,
+        height: r.height * vp.scale,
+      };
+    } else if (ent.type === 'polyline') {
+      const pl = ent as any;
+      return {
+        ...pl,
+        points: pl.points.map((p: any) => ({ ...p, ...transformPt(p) })),
+      };
+    }
+    return null;
   }
 
   // ---------------------------------------------------------------------------

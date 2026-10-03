@@ -13,6 +13,7 @@ import {
   RotateCw,
   FolderOpen,
   Info,
+  Printer,
 } from 'lucide-react';
 
 interface TopMenuBarProps {
@@ -23,6 +24,7 @@ interface TopMenuBarProps {
   onOpenCreateBlock?: () => void;
   onOpenDimStyle?: () => void;
   onOpenDataExtraction?: () => void;
+  onOpenPlot?: () => void;
   onLoadSample: (sampleType: 'mechanical' | 'architectural') => void;
 }
 
@@ -34,6 +36,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   onOpenCreateBlock,
   onOpenDimStyle,
   onOpenDataExtraction,
+  onOpenPlot,
   onLoadSample,
 }) => {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -187,6 +190,21 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               >
                 <Download size={14} />
                 Export as SVG Vector
+              </button>
+              <div className="border-t border-[#3a3f4b] my-1" />
+              <button
+                onClick={() => {
+                  if (onOpenPlot) onOpenPlot();
+                  else core.openPlotModal();
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <Printer size={14} className="text-[#00e5ff]" />
+                  Plot / Print to PDF...
+                </div>
+                <span className="text-[10px] text-gray-400">Ctrl+P</span>
               </button>
             </div>
           )}

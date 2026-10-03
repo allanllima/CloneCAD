@@ -291,6 +291,46 @@ export const CommandLine: React.FC<CommandLineProps> = ({
         else core.emit('data_extraction:open_modal');
         break;
 
+      // Phase 5: Layouts, Paper Space & Plotting
+      case 'PLOT':
+      case 'PRINT':
+      case 'PAGESETUP':
+        core.openPlotModal();
+        break;
+
+      case 'MV':
+      case 'MVIEW':
+        core.setActiveTool('mview');
+        break;
+
+      case 'PSPACE':
+      case 'PS':
+        if (core.getLayouts().length > 0) {
+          core.setActiveSpace(core.getLayouts()[0].id);
+        }
+        break;
+
+      case 'MSPACE':
+      case 'MS':
+      case 'MODEL':
+        core.setActiveSpace('model');
+        break;
+
+      case 'LAYOUT':
+        if (parts[1]) {
+          const sub = parts[1].toUpperCase();
+          if (sub === 'NEW' || sub === 'N') {
+            const l = core.createLayout({ name: parts.slice(2).join(' ') || undefined });
+            core.setActiveSpace(l.id);
+          } else if (sub === 'SET' || sub === 'S') {
+            const target = core.getLayouts().find((x) => x.name.toUpperCase() === parts[2]?.toUpperCase() || x.id === parts[2]);
+            if (target) core.setActiveSpace(target.id);
+          }
+        } else {
+          core.openPlotModal();
+        }
+        break;
+
       // Navigation & View
       case 'P':
       case 'PAN':

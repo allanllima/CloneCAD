@@ -26,6 +26,15 @@ import { TrackingEngine, TrackingRay } from './TrackingEngine';
 import { BlockManager } from './BlockManager';
 import { GripManager } from './GripManager';
 import { DimStyleManager } from './DimStyleManager';
+import { LayoutManager } from './layout/LayoutManager';
+import { PlotStyleManager } from './layout/PlotStyleManager';
+import { PDFPlotter } from './layout/PDFPlotter';
+import {
+  CADLayout,
+  LayoutViewport,
+  PlotStyleTable,
+  PlotConfig,
+} from './layout/LayoutTypes';
 import { ModifyEntityCommand } from '../commands/ModifyEntityCommand';
 
 export class CADCore implements CADCoreAPI {
@@ -39,6 +48,9 @@ export class CADCore implements CADCoreAPI {
   private blockManager: BlockManager;
   private gripManager: GripManager;
   private dimStyleManager: DimStyleManager;
+  private layoutManager: LayoutManager;
+  private plotStyleManager: PlotStyleManager;
+  private pdfPlotter: PDFPlotter;
   private eventBus: EventBus;
   private renderer: CADRenderer | null = null;
 
@@ -66,6 +78,12 @@ export class CADCore implements CADCoreAPI {
     this.blockManager = new BlockManager(() => this.eventBus.emit('block:registered'));
     this.gripManager = new GripManager();
     this.dimStyleManager = new DimStyleManager();
+    this.plotStyleManager = new PlotStyleManager();
+    this.layoutManager = new LayoutManager(() => {
+      this.eventBus.emit('layout:changed');
+      this.requestRender();
+    });
+    this.pdfPlotter = new PDFPlotter(this.layoutManager, this.plotStyleManager);
 
     this.layers = new LayerManager(() => {
       this.eventBus.emit('layer:changed');
@@ -572,7 +590,17 @@ export class CADCore implements CADCoreAPI {
   // ---------------------------------------------------------------------------
   public requestRender(): void {
     if (this.renderer) {
-      this.renderer.renderEntities(this.getEntities(), this.getLayers());
+      if (this.isModelSpace()) {
+        this.renderer.renderPaperLayout(undefined, [], [], this.layoutManager);
+        this.renderer.renderEntities(this.getEntities(), this.getLayers());
+      } else {
+        this.renderer.renderPaperLayout(
+          this.getActiveLayout(),
+          this.getEntities(),
+          this.getLayers(),
+          this.layoutManager
+        );
+      }
       this.renderer.renderPreview(this.previewEntity);
       this.renderer.renderSelectionBox(this.selectionBox);
 
@@ -846,5 +874,137 @@ export class CADCore implements CADCoreAPI {
 
   public getSelectionManager(): SelectionManager {
     return this.selection;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Layouts, Paper Space & Plotting (Phase 5)
+  // ---------------------------------------------------------------------------
+  public getActiveSpace(): 'model' | string {
+    return this.layoutManager.getActiveSpace();
+  }
+
+  public isModelSpace(): boolean {
+    return this.layoutManager.isModelSpace();
+  }
+
+  public setActiveSpace(space: 'model' | string): void {
+    const prev = this.layoutManager.getActiveSpace();
+    if (prev === space) return;
+
+    this.layoutManager.setActiveSpace(space);
+
+    if (space !== 'model') {
+      const layout = this.layoutManager.getLayout(space);
+      if (layout) {
+        const dims = this.layoutManager.getPaperDimensions(layout);
+        // Center view on paper sheet with comfortable margin
+        const pad = 120;
+        const zoomX = this.viewport.getState().width / (dims.width + pad);
+        const zoomY = this.viewport.getState().height / (dims.height + pad);
+        this.viewport.setState({
+          cameraX: dims.width / 2,
+          cameraY: dims.height / 2,
+          zoom: Math.min(zoomX, zoomY),
+        });
+      }
+    }
+
+    this.eventBus.emit('space:changed', space);
+    this.eventBus.emit('layout:changed');
+    this.logCommandMessage(`<Espaço alterado: ${space === 'model' ? 'Model Space' : 'Paper Space (' + space + ')'}>`);
+    this.requestRender();
+  }
+
+  public getLayouts(): CADLayout[] {
+    return this.layoutManager.getAllLayouts();
+  }
+
+  public getActiveLayout(): CADLayout | undefined {
+    return this.layoutManager.getActiveLayout();
+  }
+
+  public getLayout(id: string): CADLayout | undefined {
+    return this.layoutManager.getLayout(id);
+  }
+
+  public createLayout(options?: Partial<CADLayout>): CADLayout {
+    const l = this.layoutManager.createLayout(options);
+    this.eventBus.emit('layout:changed');
+    this.logCommandMessage(`Layout "${l.name}" criado.`);
+    this.requestRender();
+    return l;
+  }
+
+  public updateLayout(id: string, updates: Partial<CADLayout>): CADLayout | undefined {
+    const l = this.layoutManager.updateLayout(id, updates);
+    this.eventBus.emit('layout:changed');
+    this.requestRender();
+    return l;
+  }
+
+  public deleteLayout(id: string): boolean {
+    const ok = this.layoutManager.deleteLayout(id);
+    if (ok) {
+      this.eventBus.emit('layout:changed');
+      this.requestRender();
+    }
+    return ok;
+  }
+
+  public addLayoutViewport(layoutId: string, vp: Omit<LayoutViewport, 'id'>): LayoutViewport | null {
+    const res = this.layoutManager.addViewport(layoutId, vp);
+    this.eventBus.emit('layout:changed');
+    this.requestRender();
+    return res;
+  }
+
+  public updateLayoutViewport(layoutId: string, vpId: string, updates: Partial<LayoutViewport>): boolean {
+    const ok = this.layoutManager.updateViewport(layoutId, vpId, updates);
+    this.eventBus.emit('layout:changed');
+    this.requestRender();
+    return ok;
+  }
+
+  public removeLayoutViewport(layoutId: string, vpId: string): boolean {
+    const ok = this.layoutManager.removeViewport(layoutId, vpId);
+    this.eventBus.emit('layout:changed');
+    this.requestRender();
+    return ok;
+  }
+
+  public setVPFreeze(layoutId: string, vpId: string, layerId: string, frozen: boolean): boolean {
+    const ok = this.layoutManager.setVPFreeze(layoutId, vpId, layerId, frozen);
+    this.eventBus.emit('layout:changed');
+    this.requestRender();
+    return ok;
+  }
+
+  public getPlotStyleTables(): PlotStyleTable[] {
+    return this.plotStyleManager.getTables();
+  }
+
+  public plotToPDF(config: PlotConfig) {
+    return this.pdfPlotter.plotToPDF(config, this.getEntities(), this.getLayers(), (name) => this.blockManager.getBlock(name));
+  }
+
+  public downloadPlotPDF(config: PlotConfig): void {
+    this.pdfPlotter.downloadPDF(config, this.getEntities(), this.getLayers(), (name) => this.blockManager.getBlock(name));
+    this.logCommandMessage(`Documento PDF exportado com sucesso: ${config.fileName || 'desenho.pdf'}`);
+  }
+
+  public openPlotModal(): void {
+    this.eventBus.emit('plot:open_modal');
+  }
+
+  public getLayoutManager(): LayoutManager {
+    return this.layoutManager;
+  }
+
+  public getPlotStyleManager(): PlotStyleManager {
+    return this.plotStyleManager;
+  }
+
+  public getPDFPlotter(): PDFPlotter {
+    return this.pdfPlotter;
   }
 }

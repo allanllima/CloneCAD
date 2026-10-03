@@ -36,6 +36,8 @@ import {
   Table,
   Sliders,
   GitCommit,
+  Printer,
+  LayoutTemplate,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
@@ -45,6 +47,7 @@ interface RibbonToolbarProps {
   onOpenCreateBlock?: () => void;
   onOpenDimStyle?: () => void;
   onOpenDataExtraction?: () => void;
+  onOpenPlot?: () => void;
 }
 
 export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
@@ -54,6 +57,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
   onOpenCreateBlock,
   onOpenDimStyle,
   onOpenDataExtraction,
+  onOpenPlot,
 }) => {
   const [activeToolId, setActiveToolId] = useState<string | null>(core.getActiveTool()?.id || 'select');
   const [layers, setLayers] = useState<CADLayer[]>(core.getLayers());
@@ -628,7 +632,7 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
       </div>
 
       {/* 6. HISTORY (UNDO/REDO) */}
-      <div className="flex flex-col items-center pr-2 justify-between">
+      <div className="flex flex-col items-center border-r border-[#3a3f4b] pr-2 justify-between">
         <div className="flex items-center gap-1">
           <button
             onClick={() => core.undo()}
@@ -652,6 +656,36 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({
         </div>
         <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
           History
+        </span>
+      </div>
+
+      {/* 7. OUTPUT & PLOT (PHASE 5) */}
+      <div className="flex flex-col items-center pr-2 justify-between">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => selectTool('mview')}
+            title="Create Viewport (MVIEW)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[44px] ${
+              activeToolId === 'mview'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <LayoutTemplate size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">MView</span>
+          </button>
+
+          <button
+            onClick={() => (onOpenPlot ? onOpenPlot() : core.openPlotModal())}
+            title="Plot to PDF (PLOT / Ctrl+P)"
+            className="flex flex-col items-center justify-center p-1.5 rounded hover:bg-[#282c34] text-[#00e5ff] hover:text-white min-w-[44px]"
+          >
+            <Printer size={18} />
+            <span className="text-[10px] mt-0.5 font-medium font-bold">Plot</span>
+          </button>
+        </div>
+        <span className="text-[9px] uppercase tracking-wider text-[#5c6370] font-semibold mt-1">
+          Output
         </span>
       </div>
     </div>

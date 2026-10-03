@@ -7,6 +7,8 @@ export interface Point2D {
   y: number;
 }
 
+export * from './layout/LayoutTypes';
+
 export interface BoundingBox2D {
   minX: number;
   minY: number;
@@ -457,6 +459,24 @@ export interface CADCoreAPI {
   logCommandMessage(msg: string): void;
   on(event: CADCoreEvent, handler: (...args: any[]) => void): () => void;
   emit(event: CADCoreEvent, ...args: any[]): void;
+
+  // Layouts, Paper Space & Plotting (Phase 5)
+  getActiveSpace(): 'model' | string;
+  isModelSpace(): boolean;
+  setActiveSpace(space: 'model' | string): void;
+  getLayouts(): import('./layout/LayoutTypes').CADLayout[];
+  getActiveLayout(): import('./layout/LayoutTypes').CADLayout | undefined;
+  getLayout(id: string): import('./layout/LayoutTypes').CADLayout | undefined;
+  createLayout(options?: Partial<import('./layout/LayoutTypes').CADLayout>): import('./layout/LayoutTypes').CADLayout;
+  updateLayout(id: string, updates: Partial<import('./layout/LayoutTypes').CADLayout>): import('./layout/LayoutTypes').CADLayout | undefined;
+  deleteLayout(id: string): boolean;
+  addLayoutViewport(layoutId: string, vp: Omit<import('./layout/LayoutTypes').LayoutViewport, 'id'>): import('./layout/LayoutTypes').LayoutViewport | null;
+  updateLayoutViewport(layoutId: string, vpId: string, updates: Partial<import('./layout/LayoutTypes').LayoutViewport>): boolean;
+  removeLayoutViewport(layoutId: string, vpId: string): boolean;
+  setVPFreeze(layoutId: string, vpId: string, layerId: string, frozen: boolean): boolean;
+  getPlotStyleTables(): import('./layout/LayoutTypes').PlotStyleTable[];
+  downloadPlotPDF(config: import('./layout/LayoutTypes').PlotConfig): void;
+  openPlotModal(): void;
 }
 
 export type CADCoreEvent =
@@ -480,4 +500,7 @@ export type CADCoreEvent =
   | 'data_extraction:open_modal'
   | 'grip:changed'
   | 'cursor:moved'
+  | 'layout:changed'
+  | 'space:changed'
+  | 'plot:open_modal'
   | 'render:requested';

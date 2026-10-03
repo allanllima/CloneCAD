@@ -13,10 +13,13 @@ import {
   Target,
 } from 'lucide-react';
 
+import { LayoutTabs } from './LayoutTabs';
+
 interface StatusBarProps {
   core: CADCore;
   onOpenLayers: () => void;
   onOpenProperties: () => void;
+  onOpenPlotModal: () => void;
   isPropertiesOpen: boolean;
   showDynamicInput: boolean;
   setShowDynamicInput: (val: boolean) => void;
@@ -26,6 +29,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   core,
   onOpenLayers,
   onOpenProperties,
+  onOpenPlotModal,
   isPropertiesOpen,
   showDynamicInput,
   setShowDynamicInput,
@@ -101,28 +105,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div className="h-7 bg-[#1b1e23] border-t border-[#2c313a] flex items-center justify-between px-2 text-[11px] font-sans text-[#abb2bf] select-none z-30">
       {/* Left: Model / Layout Tabs */}
-      <div className="flex items-center h-full gap-1">
-        <button
-          onClick={() => setActiveTab('model')}
-          className={`h-full px-3 text-xs font-semibold flex items-center transition-colors border-r border-[#2c313a] ${
-            activeTab === 'model'
-              ? 'bg-[#21252b] text-white border-b-2 border-b-[#007acc]'
-              : 'text-[#6c7280] hover:text-[#abb2bf]'
-          }`}
-        >
-          MODEL
-        </button>
-        <button
-          onClick={() => setActiveTab('layout1')}
-          className={`h-full px-3 text-xs flex items-center transition-colors border-r border-[#2c313a] ${
-            activeTab === 'layout1'
-              ? 'bg-[#21252b] text-white border-b-2 border-b-[#007acc]'
-              : 'text-[#6c7280] hover:text-[#abb2bf]'
-          }`}
-        >
-          LAYOUT 1
-        </button>
-      </div>
+      <LayoutTabs core={core} onOpenPlotModal={onOpenPlotModal} />
 
       {/* Center: Coordinates Display */}
       <div className="flex items-center gap-3 font-mono text-[11px] text-[#98c379] px-2">

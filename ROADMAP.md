@@ -83,18 +83,22 @@ flowchart LR
 
 ---
 
-## 📌 Fase 5: Layouts, Viewports, Escalas & Plotagem (Folhas de Impressão)
+## 📌 Fase 5: Layouts, Viewports, Escalas & Plotagem (Folhas de Impressão) (Concluída ✅)
 > **Objetivo:** Separar o ambiente de modelagem (Model Space) do ambiente de pranchas técnicas (Paper Space).
 
-- [ ] **Paper Space (Abas de Layout):**
-  - Definição de formatos de folha normalizados (A0, A1, A2, A3, A4 com margens e carimbo).
-- [ ] **Viewports Flutuantes (`MVIEW`):**
-  - Janelas no papel que enquadram o Model Space em escalas técnicas padronizadas (1:1, 1:50, 1:100, 1:25).
+- [x] **Paper Space (Abas de Layout):**
+  - Definição de formatos de folha normalizados (A0, A1, A2, A3, A4 com margens ABNT NBR 10068 e carimbo técnico paramétrico).
+  - Barra de abas clássica de layouts com alternância instantânea entre `Model` e pranchas técnicas (`LayoutTabs.tsx`, `LayoutManager.ts`).
+- [x] **Viewports Flutuantes (`MVIEW`):**
+  - Janelas no papel que enquadram o Model Space em escalas técnicas padronizadas (1:1, 1:10, 1:20, 1:25, 1:50, 1:75, 1:100, 1:200, 1:500).
   - Controle de visibilidade de camadas independente por Viewport (*VP Freeze*).
-- [ ] **Gerenciador de Estilos de Plotagem (CTB / STB):**
-  - Mapeamento de cor da entidade para espessura de traço e cor final na impressão (ex: todas as cores saem em preto monocromático, com espessuras de pena de 0.1mm a 0.8mm).
-- [ ] **Módulo de Exportação Vetorial:**
-  - Exportação direta para **PDF Vetorial multipágina** de alta fidelidade e resolução independente.
+  - Ferramenta e comando `MVIEW` para criar viewports desenhando retângulo na folha (`MViewPlugin.ts`).
+- [x] **Gerenciador de Estilos de Plotagem (CTB / STB):**
+  - Mapeamento de cor da entidade para espessura de traço e cor final na impressão (`PlotStyleManager.ts`).
+  - Tabelas de penas normalizadas: `monochrome.ctb`, `grayscale.ctb`, `acad.ctb` e `architectural.ctb` (alvenaria 0.70mm, esquadrias 0.35mm, cotas 0.18mm, hachuras 0.09mm).
+- [x] **Módulo de Exportação Vetorial:**
+  - Exportação direta para **PDF Vetorial** de alta fidelidade e resolução independente com `jspdf` (`PDFPlotter.ts`).
+  - Modal técnico de plotagem (`PlotModal.tsx`) com pré-visualização SVG em tempo real e atalho `Ctrl+P`.
 
 ---
 
