@@ -15,6 +15,12 @@ import { ErasePlugin } from './modify/ErasePlugin';
 import { MovePlugin } from './modify/MovePlugin';
 import { CopyPlugin } from './modify/CopyPlugin';
 import { RotatePlugin } from './modify/RotatePlugin';
+import { MirrorPlugin } from './modify/MirrorPlugin';
+import { OffsetPlugin } from './modify/OffsetPlugin';
+import { FilletChamferPlugin } from './modify/FilletChamferPlugin';
+import { TrimExtendPlugin } from './modify/TrimExtendPlugin';
+import { StretchPlugin } from './modify/StretchPlugin';
+import { ArrayPlugin } from './modify/ArrayPlugin';
 
 export * from './utility/SelectPlugin';
 export * from './utility/PanPlugin';
@@ -32,6 +38,12 @@ export * from './modify/ErasePlugin';
 export * from './modify/MovePlugin';
 export * from './modify/CopyPlugin';
 export * from './modify/RotatePlugin';
+export * from './modify/MirrorPlugin';
+export * from './modify/OffsetPlugin';
+export * from './modify/FilletChamferPlugin';
+export * from './modify/TrimExtendPlugin';
+export * from './modify/StretchPlugin';
+export * from './modify/ArrayPlugin';
 
 /**
  * Initializes and registers the standard AutoCAD plugin suite onto the core
@@ -53,9 +65,15 @@ export function registerDefaultPlugins(core: CADCoreAPI): void {
   core.registerPlugin(new EllipsePlugin());
   core.registerPlugin(new HatchPlugin());
 
-  // Modify
+  // Modify (Phase 1 & Phase 2)
   core.registerPlugin(new ErasePlugin());
   core.registerPlugin(new MovePlugin());
   core.registerPlugin(new CopyPlugin());
   core.registerPlugin(new RotatePlugin());
+  core.registerPlugin(new MirrorPlugin());
+  core.registerPlugin(new OffsetPlugin());
+  core.registerPlugin(new FilletChamferPlugin());
+  core.registerPlugin(new TrimExtendPlugin());
+  core.registerPlugin(new StretchPlugin());
+  core.registerPlugin(new ArrayPlugin());
 }

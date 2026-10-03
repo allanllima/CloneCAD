@@ -34,16 +34,16 @@ flowchart LR
 ## 📌 Fase 2: Ferramentas Avançadas de Modificação & Precisão
 > **Objetivo:** Equipar o desenhista técnico com as ferramentas essenciais de edição do fluxo diário de CAD.
 
-- [ ] **Ferramentas de Transformação Essenciais:**
-  - **TRIM (Aparar) & EXTEND (Estender):** Cálculo automático de limites de corte entre interseções de qualquer primitiva.
-  - **OFFSET (Paralelas):** Criação de curvas paralelas equidistantes em linhas, arcos e polilinhas fechadas/abertas.
-  - **FILLET (Concordância) & CHAMFER (Chanfro):** Arredondamento com raio pré-determinado ou corte em bisel entre dois segmentos.
-  - **MIRROR (Espelhar):** Espelhamento simétrico com opção de manter ou excluir os objetos originais.
-  - **STRETCH (Esticar):** Modificação de vértices contidos dentro de uma janela *Crossing Selection*, mantendo as conexões adjacentes.
-  - **ARRAY (Matriz):** Criação de padrões repetitivos retangulares, polares (em torno de um centro) e ao longo de um caminho (*Path Array*).
-- [ ] **Auxiliares de Precisão Avançados:**
-  - **O-Track (Object Snap Tracking):** Linhas guias pontilhadas temporárias alinhadas a pontos de snap existentes (projeção ortogonal de endpoints/centers no cursor).
-  - **Polar Tracking:** Travamento angular em incrementos customizáveis (ex: $15^\circ, 30^\circ, 45^\circ, 90^\circ$).
+- [x] **Ferramentas de Transformação Essenciais:**
+  - **TRIM (Aparar) & EXTEND (Estender):** Cálculo automático de limites de corte entre interseções de qualquer primitiva (`TrimExtendPlugin.ts`, `IntersectionUtils.ts`).
+  - **OFFSET (Paralelas):** Criação de curvas paralelas equidistantes em linhas, círculos, retângulos e arcos (`OffsetPlugin.ts`).
+  - **FILLET (Concordância) & CHAMFER (Chanfro):** Arredondamento com raio pré-determinado com arco tangente e corte em bisel chanfrado entre dois segmentos (`FilletChamferPlugin.ts`).
+  - **MIRROR (Espelhar):** Espelhamento simétrico por linha de reflexão arbitrária de 2 pontos (`MirrorPlugin.ts`).
+  - **STRETCH (Esticar):** Modificação de vértices contidos dentro de uma janela *Crossing Selection*, preservando conectividade (`StretchPlugin.ts`).
+  - **ARRAY (Matriz):** Criação de padrões repetitivos retangulares (linhas $\times$ colunas) e polares ($N$ itens em torno do centro com ângulo de preenchimento) (`ArrayPlugin.ts`).
+- [x] **Auxiliares de Precisão Avançados:**
+  - **O-Track (Object Snap Tracking, F11):** Linhas guias pontilhadas verdes temporárias alinhadas horizontal e verticalmente a pontos de snap adquiridos (`TrackingEngine.ts`, `CADRenderer.renderTrackingRays`).
+  - **Polar Tracking (F10):** Travamento angular em incrementos customizáveis ($15^\circ, 30^\circ, 45^\circ, 90^\circ$) com projeção de vetor alinhado e tooltip dinâmico (`TrackingEngine.ts`).
 
 ---
 

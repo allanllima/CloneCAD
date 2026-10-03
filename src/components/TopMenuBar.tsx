@@ -415,6 +415,78 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               </button>
               <button
                 onClick={() => {
+                  core.setActiveTool('mirror');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Mirror</span> <span className="text-[#5c6370]">MI</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('offset');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Offset</span> <span className="text-[#5c6370]">O</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('fillet');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Fillet</span> <span className="text-[#5c6370]">F</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('chamfer');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Chamfer</span> <span className="text-[#5c6370]">CHA</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('trim');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Trim</span> <span className="text-[#5c6370]">TR</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('extend');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Extend</span> <span className="text-[#5c6370]">EX</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('stretch');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Stretch</span> <span className="text-[#5c6370]">S</span>
+              </button>
+              <button
+                onClick={() => {
+                  core.setActiveTool('array');
+                  setOpenMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 hover:bg-[#007acc] hover:text-white flex justify-between"
+              >
+                <span>Array</span> <span className="text-[#5c6370]">AR</span>
+              </button>
+              <button
+                onClick={() => {
                   core.setActiveTool('erase');
                   setOpenMenu(null);
                 }}

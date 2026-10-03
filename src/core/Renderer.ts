@@ -6,6 +6,7 @@ import { SplineUtils } from './geometry/SplineUtils';
 import { EllipseUtils } from './geometry/EllipseUtils';
 import { HatchUtils } from './geometry/HatchUtils';
 import { PolygonBooleanUtils } from './geometry/PolygonBooleanUtils';
+import { TrackingRay } from './TrackingEngine';
 
 export class CADRenderer {
   private container: HTMLElement;
@@ -20,6 +21,7 @@ export class CADRenderer {
   private previewGroup: THREE.Group;
   private selectionBoxGroup: THREE.Group;
   private ucsGroup: THREE.Group;
+  private trackingGroup: THREE.Group;
 
   // Render loop flag
   private animationFrameId: number | null = null;
@@ -66,12 +68,14 @@ export class CADRenderer {
     this.previewGroup = new THREE.Group();
     this.selectionBoxGroup = new THREE.Group();
     this.ucsGroup = new THREE.Group();
+    this.trackingGroup = new THREE.Group();
 
     this.scene.add(this.gridGroup);
     this.scene.add(this.entityGroup);
     this.scene.add(this.previewGroup);
     this.scene.add(this.selectionBoxGroup);
     this.scene.add(this.ucsGroup);
+    this.scene.add(this.trackingGroup);
 
     // 5. Materials
     this.selectedMaterial = new THREE.LineBasicMaterial({
@@ -408,6 +412,43 @@ export class CADRenderer {
 
     this.selectionBoxGroup.add(fillMesh);
     this.selectionBoxGroup.add(borderLines);
+    this.requestRender();
+  }
+
+  public renderTrackingRays(rays: TrackingRay[] | null): void {
+    this.clearGroup(this.trackingGroup);
+
+    if (!rays || rays.length === 0) {
+      this.requestRender();
+      return;
+    }
+
+    const { zoom } = this.viewport.getState();
+    const dashSize = 6 / zoom;
+    const gapSize = 4 / zoom;
+
+    rays.forEach((ray) => {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute(
+          [ray.start.x, ray.start.y, 25, ray.end.x, ray.end.y, 25],
+          3
+        )
+      );
+      const mat = new THREE.LineDashedMaterial({
+        color: 0x22c55e, // AutoCAD tracking green
+        dashSize,
+        gapSize,
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      });
+      const line = new THREE.Line(geom, mat);
+      line.computeLineDistances();
+      this.trackingGroup.add(line);
+    });
+
     this.requestRender();
   }
 

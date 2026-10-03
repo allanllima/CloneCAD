@@ -9,6 +9,8 @@ import {
   Compass,
   Layers,
   Sliders,
+  Crosshair,
+  Target,
 } from 'lucide-react';
 
 interface StatusBarProps {
@@ -31,14 +33,24 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   const [coords, setCoords] = useState({ x: 0, y: 0 });
   const [snapSettings, setSnapSettings] = useState<SnapSettings>(core.getSnapSettings());
   const [ortho, setOrtho] = useState<boolean>(core.isOrthoMode());
+  const [polar, setPolar] = useState<boolean>(core.isPolarTracking());
+  const [polarInc, setPolarInc] = useState<number>(core.getPolarIncrement());
+  const [otrack, setOtrack] = useState<boolean>(core.isOTrack());
   const [activeTab, setActiveTab] = useState<'model' | 'layout1'>('model');
 
   useEffect(() => {
     const unsubSnap = core.on('snap:changed', (s) => setSnapSettings(s));
     const unsubCursor = core.on('cursor:moved', (pt) => setCoords(pt));
+    const unsubTracking = core.on('tracking:changed', () => {
+      setPolar(core.isPolarTracking());
+      setPolarInc(core.getPolarIncrement());
+      setOtrack(core.isOTrack());
+      setOrtho(core.isOrthoMode());
+    });
     return () => {
       unsubSnap();
       unsubCursor();
+      unsubTracking();
     };
   }, [core]);
 
@@ -46,6 +58,30 @@ export const StatusBar: React.FC<StatusBarProps> = ({
     const next = !ortho;
     core.setOrthoMode(next);
     setOrtho(next);
+    setPolar(core.isPolarTracking());
+  };
+
+  const togglePolar = () => {
+    const next = !polar;
+    core.setPolarTracking(next);
+    setPolar(next);
+    setOrtho(core.isOrthoMode());
+  };
+
+  const cyclePolarInc = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const angles = [15, 30, 45, 90];
+    const currIdx = angles.indexOf(polarInc);
+    const nextAngle = angles[(currIdx + 1) % angles.length];
+    core.setPolarIncrement(nextAngle);
+    setPolarInc(nextAngle);
+    core.logCommandMessage(`POLAR increment: ${nextAngle}°`);
+  };
+
+  const toggleOtrack = () => {
+    const next = !otrack;
+    core.setOTrack(next);
+    setOtrack(next);
   };
 
   const toggleOsnap = () => {
@@ -125,6 +161,27 @@ export const StatusBar: React.FC<StatusBarProps> = ({
           ORTHO
         </button>
 
+        {/* POLAR TRACKING TOGGLE (F10) */}
+        <button
+          onClick={togglePolar}
+          title={`Polar Tracking (F10) - Angle: ${polarInc}° (Click angle to change)`}
+          className={`h-6 px-2 flex items-center gap-1 rounded transition-colors text-[10px] font-bold ${
+            polar
+              ? 'bg-[#007acc] text-white'
+              : 'bg-[#282c34] text-[#abb2bf] hover:bg-[#353b45]'
+          }`}
+        >
+          <Crosshair size={12} />
+          <span>POLAR</span>
+          <span
+            onClick={cyclePolarInc}
+            className="ml-0.5 px-1 py-0.2 bg-black/30 rounded hover:bg-black/50 text-[9px]"
+            title="Cycle Polar Increment"
+          >
+            {polarInc}°
+          </span>
+        </button>
+
         {/* OSNAP TOGGLE (F3) */}
         <button
           onClick={toggleOsnap}
@@ -137,6 +194,20 @@ export const StatusBar: React.FC<StatusBarProps> = ({
         >
           <Magnet size={12} />
           OSNAP
+        </button>
+
+        {/* O-TRACK TOGGLE (F11) */}
+        <button
+          onClick={toggleOtrack}
+          title="Object Snap Tracking (F11)"
+          className={`h-6 px-2 flex items-center gap-1 rounded transition-colors text-[10px] font-bold ${
+            otrack
+              ? 'bg-[#007acc] text-white'
+              : 'bg-[#282c34] text-[#abb2bf] hover:bg-[#353b45]'
+          }`}
+        >
+          <Target size={12} />
+          OTRACK
         </button>
 
         {/* DYN (Dynamic Input) */}

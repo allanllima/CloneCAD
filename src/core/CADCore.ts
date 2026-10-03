@@ -19,6 +19,7 @@ import { SelectionManager } from './SelectionManager';
 import { SnapEngine } from './SnapEngine';
 import { EventBus } from './EventBus';
 import { CADRenderer } from './Renderer';
+import { TrackingEngine, TrackingRay } from './TrackingEngine';
 
 export class CADCore implements CADCoreAPI {
   // Subsystems
@@ -27,6 +28,7 @@ export class CADCore implements CADCoreAPI {
   private layers: LayerManager;
   private selection: SelectionManager;
   private snapEngine: SnapEngine;
+  private trackingEngine: TrackingEngine;
   private eventBus: EventBus;
   private renderer: CADRenderer | null = null;
 
@@ -50,6 +52,7 @@ export class CADCore implements CADCoreAPI {
     this.eventBus = new EventBus();
     this.viewport = new Viewport(width, height);
     this.snapEngine = new SnapEngine();
+    this.trackingEngine = new TrackingEngine();
 
     this.layers = new LayerManager(() => {
       this.eventBus.emit('layer:changed');
@@ -159,6 +162,10 @@ export class CADCore implements CADCoreAPI {
       this.activeTool.onDeactivate(this);
       this.setPreviewEntity(null);
       this.setSelectionBox(null);
+    }
+    this.trackingEngine.clearAcquiredPoints();
+    if (this.renderer) {
+      this.renderer.renderTrackingRays(null);
     }
 
     if (!toolId) {
@@ -416,7 +423,43 @@ export class CADCore implements CADCoreAPI {
 
   public setOrthoMode(enabled: boolean): void {
     this.orthoMode = enabled;
+    if (enabled && this.trackingEngine.isPolarEnabled()) {
+      this.trackingEngine.setPolarEnabled(false);
+      this.eventBus.emit('tracking:changed');
+    }
     this.logCommandMessage(`<Ortho ${enabled ? 'ON' : 'OFF'}>`);
+  }
+
+  public isPolarTracking(): boolean {
+    return this.trackingEngine.isPolarEnabled();
+  }
+
+  public setPolarTracking(enabled: boolean): void {
+    this.trackingEngine.setPolarEnabled(enabled);
+    if (enabled && this.orthoMode) {
+      this.orthoMode = false;
+    }
+    this.logCommandMessage(`<Polar ${enabled ? 'ON' : 'OFF'}>`);
+    this.eventBus.emit('tracking:changed');
+  }
+
+  public getPolarIncrement(): number {
+    return this.trackingEngine.getPolarIncrement();
+  }
+
+  public setPolarIncrement(deg: number): void {
+    this.trackingEngine.setPolarIncrement(deg);
+    this.eventBus.emit('tracking:changed');
+  }
+
+  public isOTrack(): boolean {
+    return this.trackingEngine.isOTrackEnabled();
+  }
+
+  public setOTrack(enabled: boolean): void {
+    this.trackingEngine.setOTrackEnabled(enabled);
+    this.logCommandMessage(`<Object Snap Tracking ${enabled ? 'ON' : 'OFF'}>`);
+    this.eventBus.emit('tracking:changed');
   }
 
   // ---------------------------------------------------------------------------
@@ -544,6 +587,18 @@ export class CADCore implements CADCoreAPI {
       this.logCommandMessage(`<Osnap ${!s.enabled ? 'ON' : 'OFF'}>`);
       return;
     }
+    // F10: Polar Tracking toggle
+    if (e.key === 'F10') {
+      e.preventDefault();
+      this.setPolarTracking(!this.isPolarTracking());
+      return;
+    }
+    // F11: O-Track toggle
+    if (e.key === 'F11') {
+      e.preventDefault();
+      this.setOTrack(!this.isOTrack());
+      return;
+    }
     // Escape: Cancel active tool or clear selection
     if (e.key === 'Escape') {
       if (this.activeTool && this.activeTool.cancel) {
@@ -553,6 +608,9 @@ export class CADCore implements CADCoreAPI {
       this.setActiveTool('select');
       this.setPrompt('Command:');
       this.logCommandMessage('*Cancel*');
+      if (this.renderer) {
+        this.renderer.renderTrackingRays(null);
+      }
       return;
     }
 
@@ -567,6 +625,38 @@ export class CADCore implements CADCoreAPI {
 
     if (snap) {
       world = { ...snap.point };
+      this.trackingEngine.acquirePoint(snap.point);
+      if (this.renderer) {
+        this.renderer.renderTrackingRays(null);
+      }
+    } else {
+      let basePoint: Point2D | null = null;
+      if (this.activeTool) {
+        if (typeof (this.activeTool as any).getBasePoint === 'function') {
+          basePoint = (this.activeTool as any).getBasePoint();
+        } else if ((this.activeTool as any).basePoint) {
+          basePoint = (this.activeTool as any).basePoint;
+        } else if ((this.activeTool as any).startPoint) {
+          basePoint = (this.activeTool as any).startPoint;
+        }
+      }
+
+      const tracking = this.trackingEngine.evaluateTracking(
+        world,
+        basePoint,
+        this.viewport.getState().zoom
+      );
+
+      if (tracking) {
+        world = tracking.snappedPoint;
+        if (this.renderer) {
+          this.renderer.renderTrackingRays(tracking.rays);
+        }
+      } else {
+        if (this.renderer) {
+          this.renderer.renderTrackingRays(null);
+        }
+      }
     }
 
     return {

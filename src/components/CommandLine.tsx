@@ -142,6 +142,46 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core }) => {
         core.setActiveTool('rotate');
         break;
 
+      case 'MI':
+      case 'MIRROR':
+        core.setActiveTool('mirror');
+        break;
+
+      case 'O':
+      case 'OFFSET':
+        core.setActiveTool('offset');
+        break;
+
+      case 'F':
+      case 'FILLET':
+        core.setActiveTool('fillet');
+        break;
+
+      case 'CHA':
+      case 'CHAMFER':
+        core.setActiveTool('chamfer');
+        break;
+
+      case 'TR':
+      case 'TRIM':
+        core.setActiveTool('trim');
+        break;
+
+      case 'EX':
+      case 'EXTEND':
+        core.setActiveTool('extend');
+        break;
+
+      case 'S':
+      case 'STRETCH':
+        core.setActiveTool('stretch');
+        break;
+
+      case 'AR':
+      case 'ARRAY':
+        core.setActiveTool('array');
+        break;
+
       // Navigation & View
       case 'P':
       case 'PAN':
@@ -184,6 +224,19 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core }) => {
         core.setOrthoMode(!core.isOrthoMode());
         break;
 
+      case 'POLAR':
+        if (parts[1] && !isNaN(Number(parts[1]))) {
+          core.setPolarIncrement(Number(parts[1]));
+          core.setPolarTracking(true);
+        } else {
+          core.setPolarTracking(!core.isPolarTracking());
+        }
+        break;
+
+      case 'OTRACK':
+        core.setOTrack(!core.isOTrack());
+        break;
+
       case 'OSNAP':
         {
           const s = core.getSnapSettings();
@@ -207,10 +260,11 @@ export const CommandLine: React.FC<CommandLineProps> = ({ core }) => {
 
       case 'HELP':
         core.logCommandMessage('Available commands:');
-        core.logCommandMessage('  Draw: LINE (L), PLINE (PL), CIRCLE (C), RECTANGLE (REC), ARC (A), TEXT (T)');
-        core.logCommandMessage('  Modify: ERASE (E), MOVE (M), COPY (CO), ROTATE (RO)');
+        core.logCommandMessage('  Draw: LINE (L), PLINE (PL), CIRCLE (C), RECTANGLE (REC), ARC (A), SPLINE (SPL), ELLIPSE (EL), HATCH (H), TEXT (T)');
+        core.logCommandMessage('  Modify: ERASE (E), MOVE (M), COPY (CO), ROTATE (RO), MIRROR (MI), OFFSET (O), FILLET (F), CHAMFER (CHA), TRIM (TR), EXTEND (EX), STRETCH (S), ARRAY (AR)');
+        core.logCommandMessage('  Precision: ORTHO (F8), POLAR (F10), OTRACK (F11), OSNAP (F3), GRID (F9)');
         core.logCommandMessage('  Navigation: PAN (P), ZOOM (Z E)');
-        core.logCommandMessage('  Utility: DIST (DI), UNDO (U), REDO, ORTHO, OSNAP, GRID, HELP');
+        core.logCommandMessage('  Utility: DIST (DI), UNDO (U), REDO, SELECT (SEL), HELP');
         core.logCommandMessage('  Coordinates: type X,Y (e.g. 50,100)');
         break;
 

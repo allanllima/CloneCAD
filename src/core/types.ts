@@ -290,6 +290,12 @@ export interface CADCoreAPI {
   // Ortho & Polar tracking
   isOrthoMode(): boolean;
   setOrthoMode(enabled: boolean): void;
+  isPolarTracking(): boolean;
+  setPolarTracking(enabled: boolean): void;
+  getPolarIncrement(): number;
+  setPolarIncrement(deg: number): void;
+  isOTrack(): boolean;
+  setOTrack(enabled: boolean): void;
 
   // Render & Preview
   requestRender(): void;
@@ -318,5 +324,6 @@ export type CADCoreEvent =
   | 'prompt:changed'
   | 'message:logged'
   | 'snap:changed'
+  | 'tracking:changed'
   | 'cursor:moved'
   | 'render:requested';

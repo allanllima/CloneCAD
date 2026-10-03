@@ -22,6 +22,13 @@ import {
   Activity,
   CircleDashed,
   Hash,
+  FlipHorizontal,
+  Scissors,
+  ArrowLeftRight,
+  Grid as GridIcon,
+  CornerUpRight,
+  ChevronsRight,
+  Split,
 } from 'lucide-react';
 
 interface RibbonToolbarProps {
@@ -268,6 +275,110 @@ export const RibbonToolbar: React.FC<RibbonToolbarProps> = ({ core, onOpenLayers
           >
             <RotateCw size={18} />
             <span className="text-[10px] mt-0.5 font-medium">Rotate</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('mirror')}
+            title="Mirror (MI)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'mirror'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <FlipHorizontal size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Mirror</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('offset')}
+            title="Offset (O)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'offset'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Split size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Offset</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('fillet')}
+            title="Fillet (F)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'fillet'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <CornerUpRight size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Fillet</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('chamfer')}
+            title="Chamfer (CHA)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'chamfer'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Minus size={18} className="transform -rotate-45" />
+            <span className="text-[10px] mt-0.5 font-medium">Chamfer</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('trim')}
+            title="Trim (TR)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'trim'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <Scissors size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Trim</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('extend')}
+            title="Extend (EX)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'extend'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <ChevronsRight size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Extend</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('stretch')}
+            title="Stretch (S)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'stretch'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <ArrowLeftRight size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Stretch</span>
+          </button>
+
+          <button
+            onClick={() => selectTool('array')}
+            title="Array (AR)"
+            className={`flex flex-col items-center justify-center p-1.5 rounded transition-all min-w-[42px] ${
+              activeToolId === 'array'
+                ? 'bg-[#007acc] text-white shadow-sm'
+                : 'hover:bg-[#282c34] text-[#abb2bf] hover:text-[#e5e9f0]'
+            }`}
+          >
+            <GridIcon size={18} />
+            <span className="text-[10px] mt-0.5 font-medium">Array</span>
           </button>
 
           <button
